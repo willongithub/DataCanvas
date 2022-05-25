@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  pdsasm1:
+    image: na
+    build:
+      context: .
+      dockerfile: ./Dockerfile
