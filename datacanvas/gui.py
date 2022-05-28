@@ -25,8 +25,12 @@ class DataCanvas(tk.Tk):
         self.title('DataCanvas')
         self.resizable(True, True)
         self.iconbitmap('datacanvas/datacanvas.ico')
-        style = ttk.Style(self)
-        style.theme_use('clam')
+
+        # Set theme
+        self.tk.call("source", "assets/theme/sun-valley.tcl")
+        self.tk.call("set_theme", "light")
+        # style = ttk.Style(self)
+        # style.theme_use('clam')
 
         self.field_1_option = tk.StringVar(self)
         self.field_1_options = ('1', '3', '5', '7')
@@ -127,6 +131,11 @@ class DataCanvas(tk.Tk):
             text='Clear',
             command=lambda: self._clear_shell()
         ).pack(padx=PADDING, pady=PADDING, side='bottom')
+        ttk.Button(
+            self.sidebar_1,
+            text='Theme',
+            command=lambda: self._change_theme()
+        ).pack(padx=PADDING, pady=PADDING, side='bottom')
 
 
         # Tab 2
@@ -203,6 +212,14 @@ class DataCanvas(tk.Tk):
                 title='Status',
                 message='CLI output all clear.'
             )
+    
+    def _change_theme(self):
+        if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
+            # Set light theme
+            self.tk.call("set_theme", "light")
+        else:
+            # Set light theme
+            self.tk.call("set_theme", "dark")
     
     def _exit(self):
         answer = askokcancel(
