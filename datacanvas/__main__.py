@@ -2,6 +2,7 @@
 
 import datacanvas.gui as gui
 
+
 def main():
     """Package entry point for the GUI."""
 
