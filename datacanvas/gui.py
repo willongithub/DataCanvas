@@ -28,10 +28,10 @@ class DataCanvas(tk.Tk):
         self.title('DataCanvas')
         self.resizable(True, True)
         
-        # platformD = system()
-        # if platformD == 'Darwin':
+        # machine = system()
+        # if machine == 'Darwin':
         #     icon = 'datacanvas/datacanvas.icns'
-        # elif platformD == 'Windows':
+        # elif machine == 'Windows':
         #     icon = 'datacanvas/datacanvas.ico'
         # else:
         #     icon = 'datacanvas/datacanvas.xbm'
@@ -39,7 +39,7 @@ class DataCanvas(tk.Tk):
 
         # Set theme
         self.tk.call("source", "assets/theme/sun-valley.tcl")
-        self.tk.call("set_theme", "light")
+        self.tk.call("set_theme", "dark")
         # style = ttk.Style(self)
         # style.theme_use('clam')
 
@@ -98,34 +98,34 @@ class Page(ttk.Frame):
         )
         self.shell.pack(side='left')
 
-        # self.canvas = tk.Canvas()
+        # # self.canvas = tk.Canvas()
 
         # Tabs
-        self.overview_tab = Tab(self.notebook, "overview")
-        self.selector_tab = Tab(self.notebook, "selector")
+        self.overview_tab = Tab(self, "overview")
+        self.selector_tab = Tab(self, "selector")
         
         self.notebook.add(self.overview_tab, text="Overview")
         self.notebook.add(self.selector_tab, text="Selector")
 
 
 class Tab(ttk.Frame):
-    def __init__(self, parent, child):
+    def __init__(self, parent, content):
         super().__init__(parent)
         
         # Create widget
-        self.setup_widgets(child)
+        self._setup_widgets(content)
 
-    def setup_widgets(self, child):      
+    def _setup_widgets(self, content):      
         self.sidebar = Sidebar(self)
         self.sidebar.pack(side='left')
 
         # Child widget
-        if child == "overview":
-            self.child = Canvas(self)
-            self.child.pack(side='left')
-        if child == "selector":
-            self.child = Selector(self)
-            self.child.pack(side='left')
+        if content == "overview":
+            self.mainframe = Canvas(self)
+            self.mainframe.pack(side='left')
+        if content == "selector":
+            self.mainframe = Selector(self)
+            self.mainframe.pack(side='left')
 
 
 class Sidebar(ttk.Frame):
@@ -138,67 +138,52 @@ class Sidebar(ttk.Frame):
         
         self.field_options = ('1', '3', '5', '7')
 
-        self.field_option = tk.StringVar(value=self.field_options[1])
+        self.field_var = tk.StringVar(value=self.field_options[1])
 
-        self.setup_widgets()
+        self._setup_widgets()
 
-    def setup_widgets(self):
-        # self.filter = ttk.LabelFrame(
-        #     self,
-        #     text='OPTIONS',
-        # )
-        # self.filter.pack(**self.filter_options)
-        
-        # self.field = ttk.LabelFrame(
-        #     self.filter,
-        #     text='Field 1:',
-        # )
-        # self.field.pack(padx=PADDING, pady=PADDING)
-        # ttk.OptionMenu(
-        #     self.field,
-        #     self.field_option,
-        #     self.field_options[0],
-        #     *self.field_options,
-        # ).pack()
-
-        self.frame = ttk.Frame(self)
-        self.frame.pack(side='top')
-
-        self.field = tk.Label(
-            self.frame,
-            bg="red",
-            text='Test',
+    def _setup_widgets(self):
+        self.filter = ttk.LabelFrame(
+            self,
+            text='OPTIONS',
         )
-        self.field.pack(padx=PADDING, pady=PADDING)
+        self.filter.pack(**self.filter_options)
 
-        # ttk.Button(
-        #     self,
-        #     text='Exit',
-        #     command=self._exit
-        # ).pack(padx=PADDING, pady=PADDING, side='bottom')
-        # # ttk.Button(
-        # #     self,
-        # #     text='Clear',
-        # #     command=lambda: self._clear_shell
-        # # ).pack(padx=PADDING, pady=PADDING, side='bottom')
-        # ttk.Button(
-        #     self,
-        #     text='Theme',
-        #     command=lambda: self._change_theme
-        # ).pack(padx=PADDING, pady=PADDING, side='bottom')
+        Options(self.filter, 'opt 1', self.field_options, self.field_var).pack()
+        Options(self.filter, 'opt 2', self.field_options, self.field_var).pack()
+        Options(self.filter, 'opt 3', self.field_options, self.field_var).pack()
+        Options(self.filter, 'opt 4', self.field_options, self.field_var).pack()
+        Options(self.filter, 'opt 5', self.field_options, self.field_var).pack()
+        Options(self.filter, 'opt 6', self.field_options, self.field_var).pack()
 
-    # def _clear_shell(self):
-    #     answer = askokcancel(
-    #         title='Confirmation',
-    #         message='CLI outout will be removed.',
-    #         icon=WARNING
-    #     )
-    #     if answer:
-    #         self.shell.delete('1.0', tk.END)
-    #         showinfo(
-    #             title='Status',
-    #             message='CLI output all clear.'
-    #         )
+        ttk.Button(
+            self,
+            text='Exit',
+            command=self._exit
+        ).pack(padx=PADDING, pady=PADDING, side='bottom')
+        ttk.Button(
+            self,
+            text='Clear',
+            command=self._clear_shell
+        ).pack(padx=PADDING, pady=PADDING, side='bottom')
+        ttk.Button(
+            self,
+            text='Theme',
+            command=self._change_theme
+        ).pack(padx=PADDING, pady=PADDING, side='bottom')
+
+    def _clear_shell(self):
+        answer = askokcancel(
+            title='Confirmation',
+            message='CLI outout will be removed.',
+            icon=WARNING
+        )
+        if answer:
+            self.shell.delete('1.0', tk.END)
+            showinfo(
+                title='Status',
+                message='CLI output all clear.'
+            )
     
     def _change_theme(self):
         if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
@@ -219,28 +204,22 @@ class Sidebar(ttk.Frame):
 
 
 class Options(ttk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, name, options, var):
         super().__init__(parent)
 
-        self.setup_widgets()
+        self._setup_widgets(name, options, var)
 
-    def setup_widgets(self):
-        self.sidebar = ttk.LabelFrame(
-            self,
-            text='OPTIONS',
-        )
-        self.sidebar.pack(**self.sidebar_options)
-        
+    def _setup_widgets(self, name, options, var):
         self.field = ttk.LabelFrame(
-            self.sidebar,
-            text='Field 1:',
+            self,
+            text=name,
         )
         self.field.pack(padx=PADDING, pady=PADDING)
         ttk.OptionMenu(
             self.field,
-            self.field_option,
-            self.field_options[0],
-            *self.field_options,
+            var,
+            options[0],
+            *options,
         ).pack()
 
 
@@ -248,9 +227,9 @@ class Canvas(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.setup_widgets()
+        self._setup_widgets()
 
-    def setup_widgets(self):
+    def _setup_widgets(self):
         self.plots = ttk.Notebook(
             self,
             width=WIDTH-SHELL,
@@ -277,89 +256,107 @@ class Selector(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.image_no_1 = ImageTk.PhotoImage(Image.open("assets/image/img_1.jpg"))
-        self.image_no_2 = ImageTk.PhotoImage(Image.open("assets/image/img_2.jpg"))
-        self.image_no_3 = ImageTk.PhotoImage(Image.open("assets/image/img_3.jpg"))
-        
-        # List of the images so that we traverse the list
-        self.image_list = [self.image_no_1, self.image_no_2, self.image_no_3]
+        self.image_list = [
+            ImageTk.PhotoImage(Image.open("assets/image/img_1.jpg")),
+            ImageTk.PhotoImage(Image.open("assets/image/img_2.jpg")),
+            ImageTk.PhotoImage(Image.open("assets/image/img_3.jpg"))
+        ]
 
-        self.setup_widgets()
+        self.count = 0
 
-    def setup_widgets(self):
-        self.label = ttk.Label(self, image=self.image_no_1)
-        self.label.pack()
+        self._setup_widgets()
+
+    def _setup_widgets(self):
+        self.image = ttk.Frame(self)
+        self.image.pack()
+        self.label = ttk.Label(self.image, image=self.image_list[self.count])
+        self.label.pack(side='top')
         
         self.button_back = ttk.Button(
             self,
             # command=self._back,
-            # state=tk.DISABLED,
+            state=tk.DISABLED,
             text="  <  ")
         
         self.button_forward = ttk.Button(
             self,
-            # command=lambda: self._forward(1),
+            command=self._forward,
             text="  >  ")
         
-        self.button_delete = ttk.Button(
-            self,
-            # command=lambda: self._delete,
-            text="  x  ")
+        # self.button_delete = ttk.Button(
+        #     self,
+        #     # command=self._delete,
+        #     text="  x  ")
         
         self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
         self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
-        self.button_delete.pack(padx=PADDING, pady=PADDING, side='left')
-        
+        # self.button_delete.pack(padx=PADDING, pady=PADDING, side='left')
     
-    # def _forward(self, img_no):
-    #     self.label.grid_forget()
+    def _forward(self):
+        self.label.pack_forget()
+        self.count += 1
     
-    #     # This is for clearing the screen so that
-    #     # our next image can pop up
-    #     self.label = ttk.Label(image=self.image_list[img_no-1])
-    
-    #     # as the list starts from 0 so we are
-    #     # subtracting one
-    #     # self.label.grid(row=1, column=0, columnspan=3)
-    #     self.label.pack()
+        self.label = ttk.Label(self.image, image=self.image_list[self.count])
+        self.label.pack(side='top')
 
-    #     self.button_for = ttk.Button(self, text="forward",
-    #                         command=lambda: self._forward(img_no+1))
-    
-    #     # img_no+1 as we want the next image to pop up
-    #     if img_no == 4:
-    #         self.button_forward = ttk.Button(self, text="Forward",
-    #                                 state=tk.DISABLED)
-    
-    #     # img_no-1 as we want previous image when we click
-    #     # back button
-    #     self.button_back = ttk.Button(self, text="Back",
-    #                         command=lambda: self._back(img_no-1))
-    
-    #     self.button_back.pack()
-    #     self.button_exit.pack()
-    #     self.button_forward.pack()
+        if self.count > 0:
+            self.button_back.pack_forget()
+            self.button_forward.pack_forget()
+            self.button_back = ttk.Button(
+                self,
+                command=self._back,
+                text="  <  ")
+            self.button_forward = ttk.Button(
+                self,
+                command=self._forward,
+                text="  >  ")
+            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
+            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
 
-    # def _back(self, img_no):
-    #     self.label.grid_forget()
+        if self.count == 2:
+            self.button_back.pack_forget()
+            self.button_forward.pack_forget()
+            self.button_back = ttk.Button(
+                self,
+                command=self._back,
+                text="  <  ")
+            self.button_forward = ttk.Button(self, text="  >  ",
+                                    state=tk.DISABLED)
+            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
+            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
+
+    def _back(self):
+        self.label.pack_forget()
+        self.count -= 1
     
-    #     # for clearing the image for new image to pop up
-    #     self.label = ttk.Label(image=self.image_list[img_no - 1])
-    #     self.label.grid(row=1, column=0, columnspan=3)
-    #     self.button_forward = ttk.Button(self, text="forward",
-    #                             command=lambda: self.forward(img_no + 1))
-    #     self.button_back = ttk.Button(self, text="Back",
-    #                         command=lambda: self.back(img_no - 1))
-    #     print(img_no)
+        self.label = ttk.Label(self.image, image=self.image_list[self.count])
+        self.label.pack(side='top')
+
+        if self.count < 2:
+            self.button_back.pack_forget()
+            self.button_forward.pack_forget()
+            self.button_back = ttk.Button(
+                self,
+                command=self._back,
+                text="  <  ")
+            self.button_forward = ttk.Button(
+                self,
+                command=self._forward,
+                text="  >  ")
+            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
+            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
     
-    #     # whenever the first image will be there we will
-    #     # have the back button disabled
-    #     if img_no == 1:
-    #         self.button_back = ttk.Button(self, Text="Back", state=tk.DISABLED)
-    
-    #     self.button_back.pack()
-    #     self.button_exit.pack()
-    #     self.button_forward.pack()
+        if self.count == 0:
+            self.button_back.pack_forget()
+            self.button_forward.pack_forget()
+            self.button_back = ttk.Button(self, text="  <  ",
+                                    state=tk.DISABLED)
+            self.button_forward = ttk.Button(
+                self,
+                command=self._forward,
+                text="  >  ")
+            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
+            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
 
 
 class Shell(ttk.Frame):
