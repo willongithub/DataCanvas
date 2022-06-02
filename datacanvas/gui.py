@@ -4,6 +4,7 @@
 
 import tkinter as tk
 from platform import system
+from tkinter import filedialog as fd
 from tkinter import ttk
 from tkinter.messagebox import WARNING, askokcancel, showinfo
 from tkinter.scrolledtext import ScrolledText
@@ -15,8 +16,9 @@ import datacanvas.utils as util
 WIDTH = 1280
 HEIGHT = 800
 SIDEBAR = 200
-SHELL = 600
+SHELL = 500
 PADDING = 10
+CANVAS = 700
 
 
 class DataCanvas(tk.Tk):
@@ -39,7 +41,7 @@ class DataCanvas(tk.Tk):
 
         # Set theme
         self.tk.call("source", "assets/theme/sun-valley.tcl")
-        self.tk.call("set_theme", "dark")
+        self.tk.call("set_theme", "light")
         # style = ttk.Style(self)
         # style.theme_use('clam')
 
@@ -68,24 +70,12 @@ class DataCanvas(tk.Tk):
 class Page(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
-
-        # Create option list
-        self.image_quality_options = ['1', '3', '5', '7']
-        self.confidance_level = ['0.5', '0.6', '0.7', '0.8', '0.9']
-
-        # Create option variables
-        self.detection_mask = tk.BooleanVar(value=True)
-        self.face_gender = tk.BooleanVar(value=True)
-        self.face_ethnicity = tk.BooleanVar(value=True)
-        self.face_emotion = tk.BooleanVar(value=True)
-        self.face_age = tk.BooleanVar(value=True)
-        self.image_quality = tk.DoubleVar(value=self.image_quality_options[1])
-        self.confidance_level = tk.DoubleVar(value=self.confidance_level[1])
     
         # Create widget
         self._setup_widgets()
 
     def _setup_widgets(self):
+        Control(self).pack(side='bottom')
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(padx=PADDING, pady=PADDING, side='left')
 
@@ -97,8 +87,6 @@ class Page(ttk.Frame):
             height=HEIGHT
         )
         self.shell.pack(side='left')
-
-        # # self.canvas = tk.Canvas()
 
         # Tabs
         self.overview_tab = Tab(self, "overview")
@@ -116,61 +104,237 @@ class Tab(ttk.Frame):
         self._setup_widgets(content)
 
     def _setup_widgets(self, content):      
-        self.sidebar = Sidebar(self)
-        self.sidebar.pack(side='left')
-
         # Child widget
         if content == "overview":
-            self.mainframe = Canvas(self)
-            self.mainframe.pack(side='left')
+            self.sidebar = Sidebar(self)
+            self.sidebar.pack(side='left')
+            self.mainframe = Plot(self)
+            self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
         if content == "selector":
             self.mainframe = Selector(self)
-            self.mainframe.pack(side='left')
+            self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
 
 
 class Sidebar(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
-
-        self.filter_options = {
-            'side': 'top',
-            'padx': PADDING, 'pady': PADDING}
         
-        self.field_options = ('1', '3', '5', '7')
+        # Create option list
+        self.face_gender_options = ['Man', 'Woman', 'All']
+        self.face_ethnicity_options = [
+            'asian',
+            'indian',
+            'black',
+            'white',
+            'middle eastern',
+            'latino hispanic',
+            'all'
+        ]
+        self.face_emotion_options = [
+            'angry',
+            'disgust',
+            'fear',
+            'happy',
+            'sad',
+            'surprise',
+            'neutral',
+            'all'
+        ]
 
-        self.field_var = tk.StringVar(value=self.field_options[1])
+        # Create option variables
+        self.face_mask = tk.BooleanVar(value=True)
+        
+        self.pose_yaw = tk.DoubleVar(value=90)
+        self.pose_pitch = tk.DoubleVar(value=90)
+        self.pose_roll = tk.DoubleVar(value=90)
+
+        self.gender_var = tk.StringVar()
+        self.emotion_var = tk.StringVar()
+        self.ethnicity_var = tk.StringVar()
+        self.age_var = tk.IntVar(value=999)
+
+        self.image_quality_var = tk.DoubleVar(value=100)
+        self.confidence_var = tk.DoubleVar(value=80.0)
+
+        self.separator = {'fill': 'x'}
 
         self._setup_widgets()
 
     def _setup_widgets(self):
-        self.filter = ttk.LabelFrame(
+        self.io = ttk.LabelFrame(
             self,
-            text='OPTIONS',
+            text='Files',
         )
-        self.filter.pack(**self.filter_options)
+        self.io.pack(padx=PADDING, pady=PADDING)
+        ttk.Button(
+            self.io,
+            text='Select JSON file',
+            command=self._select_file
+        ).pack(padx=PADDING, pady=PADDING)
 
-        Options(self.filter, 'opt 1', self.field_options, self.field_var).pack()
-        Options(self.filter, 'opt 2', self.field_options, self.field_var).pack()
-        Options(self.filter, 'opt 3', self.field_options, self.field_var).pack()
-        Options(self.filter, 'opt 4', self.field_options, self.field_var).pack()
-        Options(self.filter, 'opt 5', self.field_options, self.field_var).pack()
-        Options(self.filter, 'opt 6', self.field_options, self.field_var).pack()
+        self.menu = ttk.LabelFrame(
+            self,
+            text='Filter',
+        )
+        self.menu.pack(padx=PADDING, pady=PADDING)
 
+        self.attr_0 = ttk.LabelFrame(
+            self.menu,
+            text='Detection',
+        )
+        self.attr_0.pack(padx=PADDING, pady=PADDING)
+        ttk.Label(self.attr_0, text='Confidence Level', padding=5).pack()
+        ttk.Spinbox(
+            self.attr_0,
+            from_=0.0,
+            to=1.0,
+            textvariable=self.confidence_var
+        ).pack()
+
+        self.attr_1 = ttk.LabelFrame(
+            self.menu,
+            text='Face',
+        )
+        self.attr_1.pack(padx=PADDING, pady=PADDING)
+        ttk.Label(self.attr_1, text='Age', padding=5).pack()
+        ttk.Spinbox(
+            self.attr_1,
+            from_=1,
+            to=999,
+            textvariable=self.age_var
+        ).pack()
+        ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
+        ttk.Label(self.attr_1, text='Gender', padding=5).pack()
+        ttk.OptionMenu(
+            self.attr_1,
+            self.gender_var,
+            self.face_gender_options[0],
+            *self.face_gender_options,
+        ).pack()
+        ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
+        ttk.Label(self.attr_1, text='Ethnicity', padding=5).pack()
+        ttk.OptionMenu(
+            self.attr_1,
+            self.ethnicity_var,
+            self.face_ethnicity_options[0],
+            *self.face_ethnicity_options,
+        ).pack()
+        ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
+        ttk.Label(self.attr_1, text='Emotion', padding=5).pack()
+        ttk.OptionMenu(
+            self.attr_1,
+            self.emotion_var,
+            self.face_emotion_options[0],
+            *self.face_emotion_options,
+        ).pack()
+
+        self.attr_2 = ttk.LabelFrame(
+            self.menu,
+            text='Head',
+        )
+        self.attr_2.pack(padx=PADDING, pady=PADDING)
+        ttk.Label(self.attr_2, text='Yaw', padding=5).pack()
+        ttk.Spinbox(
+            self.attr_2,
+            from_=0,
+            to=90,
+            textvariable=self.pose_yaw
+        ).pack()
+        ttk.Separator(self.attr_2, orient='horizontal').pack(**self.separator)
+        ttk.Label(self.attr_2, text='Pitch', padding=5).pack()
+        ttk.Spinbox(
+            self.attr_2,
+            from_=0,
+            to=90,
+            textvariable=self.pose_pitch
+        ).pack()
+        ttk.Separator(self.attr_2, orient='horizontal').pack(**self.separator)
+        ttk.Label(self.attr_2, text='Roll', padding=5).pack()
+        ttk.Spinbox(
+            self.attr_2,
+            from_=0,
+            to=90,
+            textvariable=self.pose_roll
+        ).pack()
+
+        self.attr_3 = ttk.LabelFrame(
+            self.menu,
+            text='Image',
+        )
+        self.attr_3.pack(padx=PADDING, pady=PADDING)
+        ttk.Label(self.attr_3, text='IQA Score', padding=5).pack()
+        ttk.Spinbox(
+            self.attr_3,
+            from_=100,
+            to=0,
+            textvariable=self.image_quality_var
+        ).pack()
+    
+    def _select_file(self):
+        filetypes = (
+            ('json files', '*.json'),
+            ('All files', '*.*')
+        )
+
+        filepath = fd.askopenfilename(
+            title='Open JSON file',
+            initialdir='./',
+            filetypes=filetypes
+        )
+
+        if filepath:
+            showinfo(
+                title='Selected',
+                message=f'Open {filepath}'
+            )
+
+
+class Control(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self._setup_widgets()
+
+    def _setup_widgets(self):
         ttk.Button(
             self,
-            text='Exit',
-            command=self._exit
-        ).pack(padx=PADDING, pady=PADDING, side='bottom')
+            text='Dark Mode',
+            command=self._change_theme
+        ).pack(padx=PADDING, pady=PADDING, side='left')
+        # ttk.Button(
+        #     self,
+        #     text='Exit',
+        #     command=self._exit
+        # ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self,
             text='Clear',
             command=self._clear_shell
-        ).pack(padx=PADDING, pady=PADDING, side='bottom')
+        ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self,
-            text='Theme',
-            command=self._change_theme
-        ).pack(padx=PADDING, pady=PADDING, side='bottom')
+            text='Apply',
+            style='Accent.TButton',
+            command=self._get_results
+        ).pack(padx=PADDING, pady=PADDING, side='left')
+        
+        self.progress = ttk.Progressbar(
+            self,
+            orient='horizontal',
+            mode='indeterminate',
+            length=SIDEBAR
+        )
+    
+    def _process(self, flag):
+        if flag == 'start':
+            self.progress.pack(padx=PADDING, pady=PADDING, side='left')
+            self.progress.start
+        if flag == 'end':
+            self.progress.stop
+            self.process.pack_forget()
+
+    def _get_results(self):
+        pass
 
     def _clear_shell(self):
         answer = askokcancel(
@@ -203,27 +367,7 @@ class Sidebar(ttk.Frame):
             exit()
 
 
-class Options(ttk.Frame):
-    def __init__(self, parent, name, options, var):
-        super().__init__(parent)
-
-        self._setup_widgets(name, options, var)
-
-    def _setup_widgets(self, name, options, var):
-        self.field = ttk.LabelFrame(
-            self,
-            text=name,
-        )
-        self.field.pack(padx=PADDING, pady=PADDING)
-        ttk.OptionMenu(
-            self.field,
-            var,
-            options[0],
-            *options,
-        ).pack()
-
-
-class Canvas(ttk.Frame):
+class Plot(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -235,7 +379,7 @@ class Canvas(ttk.Frame):
             width=WIDTH-SHELL,
             height=HEIGHT
         )
-        self.plots.pack(padx=PADDING, pady=PADDING, side='left')
+        self.plots.pack(pady=PADDING, side='left')
         self.fig_1 = ttk.Frame(
             self.plots,
             width=WIDTH-SHELL,
@@ -257,9 +401,9 @@ class Selector(ttk.Frame):
         super().__init__(parent)
 
         self.image_list = [
-            ImageTk.PhotoImage(Image.open("assets/image/img_1.jpg")),
-            ImageTk.PhotoImage(Image.open("assets/image/img_2.jpg")),
-            ImageTk.PhotoImage(Image.open("assets/image/img_3.jpg"))
+            ImageTk.PhotoImage(Image.open("assets/image/img_1.jpg").resize((CANVAS, CANVAS))),
+            ImageTk.PhotoImage(Image.open("assets/image/img_2.jpg").resize((CANVAS, CANVAS))),
+            ImageTk.PhotoImage(Image.open("assets/image/img_3.jpg").resize((CANVAS, CANVAS)))
         ]
 
         self.count = 0
@@ -267,19 +411,28 @@ class Selector(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        self.image = ttk.Frame(self)
+        self.control = ttk.Frame(self)
+        self.control.pack(side='bottom')
+        self.image = ttk.LabelFrame(self, text='Image Viwer')
         self.image.pack()
-        self.label = ttk.Label(self.image, image=self.image_list[self.count])
-        self.label.pack(side='top')
+
+        self.annotation = ttk.Label(self.image, text='Dog/Cat')
+        self.annotation.pack(padx=PADDING, pady=PADDING, side='bottom')
+        self.canvas = tk.Canvas(self.image, height=CANVAS, width=CANVAS)
+        self.canvas.pack(padx=PADDING, pady=PADDING)
+
+        self.canvas.create_image(
+            CANVAS/2, CANVAS/2,
+            image=self.image_list[self.count])
         
         self.button_back = ttk.Button(
-            self,
+            self.control,
             # command=self._back,
             state=tk.DISABLED,
             text="  <  ")
         
         self.button_forward = ttk.Button(
-            self,
+            self.control,
             command=self._forward,
             text="  >  ")
         
@@ -293,21 +446,20 @@ class Selector(ttk.Frame):
         # self.button_delete.pack(padx=PADDING, pady=PADDING, side='left')
     
     def _forward(self):
-        self.label.pack_forget()
+        self.canvas.delete('all')
         self.count += 1
-    
-        self.label = ttk.Label(self.image, image=self.image_list[self.count])
-        self.label.pack(side='top')
+
+        self.canvas.create_image(CANVAS/2, CANVAS/2, image=self.image_list[self.count])
 
         if self.count > 0:
             self.button_back.pack_forget()
             self.button_forward.pack_forget()
             self.button_back = ttk.Button(
-                self,
+                self.control,
                 command=self._back,
                 text="  <  ")
             self.button_forward = ttk.Button(
-                self,
+                self.control,
                 command=self._forward,
                 text="  >  ")
             self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
@@ -317,30 +469,31 @@ class Selector(ttk.Frame):
             self.button_back.pack_forget()
             self.button_forward.pack_forget()
             self.button_back = ttk.Button(
-                self,
+                self.control,
                 command=self._back,
                 text="  <  ")
-            self.button_forward = ttk.Button(self, text="  >  ",
-                                    state=tk.DISABLED)
+            self.button_forward = ttk.Button(
+                self.control,
+                text="  >  ",
+                state=tk.DISABLED)
             self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
             self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
 
     def _back(self):
-        self.label.pack_forget()
+        self.canvas.delete('all')
         self.count -= 1
     
-        self.label = ttk.Label(self.image, image=self.image_list[self.count])
-        self.label.pack(side='top')
+        self.canvas.create_image(CANVAS/2, CANVAS/2, image=self.image_list[self.count])
 
         if self.count < 2:
             self.button_back.pack_forget()
             self.button_forward.pack_forget()
             self.button_back = ttk.Button(
-                self,
+                self.control,
                 command=self._back,
                 text="  <  ")
             self.button_forward = ttk.Button(
-                self,
+                self.control,
                 command=self._forward,
                 text="  >  ")
             self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
@@ -349,10 +502,12 @@ class Selector(ttk.Frame):
         if self.count == 0:
             self.button_back.pack_forget()
             self.button_forward.pack_forget()
-            self.button_back = ttk.Button(self, text="  <  ",
-                                    state=tk.DISABLED)
+            self.button_back = ttk.Button(
+                self.control,
+                text="  <  ",
+                state=tk.DISABLED)
             self.button_forward = ttk.Button(
-                self,
+                self.control,
                 command=self._forward,
                 text="  >  ")
             self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
