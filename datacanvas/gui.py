@@ -2,6 +2,8 @@
 
 """General Tkinter GUI."""
 
+import json
+import os
 import tkinter as tk
 from platform import system
 from tkinter import filedialog as fd
@@ -9,6 +11,11 @@ from tkinter import ttk
 from tkinter.messagebox import WARNING, askokcancel, showinfo
 from tkinter.scrolledtext import ScrolledText
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+                                               NavigationToolbar2Tk)
 from PIL import Image, ImageTk
 
 import datacanvas.utils as util
@@ -16,7 +23,7 @@ import datacanvas.utils as util
 WIDTH = 1280
 HEIGHT = 800
 SIDEBAR = 200
-SHELL = 500
+SHELL = 400
 PADDING = 10
 CANVAS = 700
 
@@ -58,18 +65,22 @@ class DataCanvas(tk.Tk):
     def _setup_app(self):
         # Setup Model
         self.model = Backend()
+        self.model.path = 'assets/test.json'
 
         # Setup View
         self.view = Page(self)
         self.view.pack(fill="both", expand=True)
 
         # Setup Controller
-        self.controller = Controller(self.model, self.view)
+        self.view.set_controller(Controller(self.model, self.view))
 
 
 class Page(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
+
+        self.controller = None
+        self.file = None
     
         # Create widget
         self._setup_widgets()
@@ -78,6 +89,8 @@ class Page(ttk.Frame):
         Control(self).pack(side='bottom')
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(padx=PADDING, pady=PADDING, side='left')
+
+        self.canvas_plot = tk.Canvas()
 
         # Shell style output area
         self.shell = ScrolledText(
@@ -94,6 +107,68 @@ class Page(ttk.Frame):
         
         self.notebook.add(self.overview_tab, text="Overview")
         self.notebook.add(self.selector_tab, text="Selector")
+    
+    def get_results(self):
+        if self.overview_tab.sidebar.path:
+            self.file = self.overview_tab.sidebar.path
+        
+        self._update_content()
+
+    def set_controller(self, controller):
+        self.controller = controller
+    
+    # Draw plot on canvas.
+    def _update_content(self):
+        self.controller.update()
+        info = self.controller.read_info()
+
+        self._insert_shell('in progress...')
+        self._insert_shell('=========================')
+        # for item in info:
+        #     self._insert_shell(item)
+        self._insert_shell(info)
+        self._insert_shell('\n\n')
+
+        plot_1 = self.controller.get_hist('faces.gender')
+        widget_1 = self.overview_tab.mainframe.fig_1
+        self._render_plot(widget_1, plot_1)
+
+        plot = self.controller.get_hist('faces.dominant_emotion')
+        widget = self.overview_tab.mainframe.fig_2
+        self._render_plot(widget, plot)
+
+        plot = self.controller.get_hist('faces.dominant_race')
+        widget = self.overview_tab.mainframe.fig_3
+        self._render_plot(widget, plot)
+
+    def _insert_shell(self, output):
+        self.shell.insert(tk.INSERT, f' {output}\n')
+        self.shell.see("end")
+
+    def _clear_shell(self):
+        answer = askokcancel(
+            title='Confirmation',
+            message='CLI outout will be removed.',
+            icon=WARNING
+        )
+        if answer:
+            self.shell.delete('1.0', tk.END)
+            showinfo(
+                title='Status',
+                message='CLI output all clear.'
+            )
+
+    def _render_plot(self, widget, plot):
+        if self.canvas_plot:
+            for child in widget.winfo_children():
+                child.destroy()
+        self.canvas_plot = FigureCanvasTkAgg(plot, widget)
+        self.canvas_plot.draw()
+
+        toolbar = NavigationToolbar2Tk(self.canvas_plot, widget)
+        toolbar.update()
+
+        self.canvas_plot.get_tk_widget().pack(expand=True)
 
 
 class Tab(ttk.Frame):
@@ -118,6 +193,8 @@ class Tab(ttk.Frame):
 class Sidebar(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
+
+        self.path = None
         
         # Create option list
         self.face_gender_options = ['Man', 'Woman', 'All']
@@ -287,15 +364,18 @@ class Sidebar(ttk.Frame):
                 title='Selected',
                 message=f'Open {filepath}'
             )
+            self.path = filepath
 
 
 class Control(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self._setup_widgets()
+        self.parent = parent
 
-    def _setup_widgets(self):
+        self._setup_widgets(parent)
+
+    def _setup_widgets(self, parent):
         ttk.Button(
             self,
             text='Dark Mode',
@@ -315,7 +395,7 @@ class Control(ttk.Frame):
             self,
             text='Apply',
             style='Accent.TButton',
-            command=self._get_results
+            command=parent.get_results
         ).pack(padx=PADDING, pady=PADDING, side='left')
         
         self.progress = ttk.Progressbar(
@@ -333,9 +413,6 @@ class Control(ttk.Frame):
             self.progress.stop
             self.process.pack_forget()
 
-    def _get_results(self):
-        pass
-
     def _clear_shell(self):
         answer = askokcancel(
             title='Confirmation',
@@ -343,7 +420,7 @@ class Control(ttk.Frame):
             icon=WARNING
         )
         if answer:
-            self.shell.delete('1.0', tk.END)
+            self.parent.shell.delete('1.0', tk.END)
             showinfo(
                 title='Status',
                 message='CLI output all clear.'
@@ -374,26 +451,23 @@ class Plot(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        self.plots = ttk.Notebook(
+        self.canvas = ttk.Notebook(
             self,
-            width=WIDTH-SHELL,
+            width=WIDTH-SHELL-SIDEBAR,
             height=HEIGHT
         )
-        self.plots.pack(pady=PADDING, side='left')
-        self.fig_1 = ttk.Frame(
-            self.plots,
-            width=WIDTH-SHELL,
-            height=HEIGHT
-        )
+        self.canvas.pack(pady=PADDING, side='left')
+
+        # Tabs for plots
+        self.fig_1 = ttk.Frame(self.canvas)
         self.fig_1.pack(side='left', fill='y')
-        self.plots.add(self.fig_1, text='fig 1')
-        self.fig_2 = ttk.Frame(
-            self.plots,
-            width=WIDTH-SHELL,
-            height=HEIGHT
-        )
+        self.canvas.add(self.fig_1, text='Fig 1')
+        self.fig_2 = ttk.Frame(self.canvas)
         self.fig_2.pack(side='left', fill='y')
-        self.plots.add(self.fig_2, text='fig 2')
+        self.canvas.add(self.fig_2, text='Fig 2')
+        self.fig_3 = ttk.Frame(self.canvas)
+        self.fig_3.pack(side='left', fill='y')
+        self.canvas.add(self.fig_3, text='Fig 3')
 
 
 class Selector(ttk.Frame):
@@ -436,15 +510,19 @@ class Selector(ttk.Frame):
             command=self._forward,
             text="  >  ")
         
-        # self.button_delete = ttk.Button(
-        #     self,
-        #     # command=self._delete,
-        #     text="  x  ")
+        self.button_delete = ttk.Button(
+            self.control,
+            command=self._delete,
+            state=tk.DISABLED,
+            text="  x  ")
         
         self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
         self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
-        # self.button_delete.pack(padx=PADDING, pady=PADDING, side='left')
+        self.button_delete.pack(padx=PADDING, pady=PADDING, side='left')
     
+    def _delete(self):
+        pass
+
     def _forward(self):
         self.canvas.delete('all')
         self.count += 1
@@ -526,33 +604,46 @@ class Shell(ttk.Frame):
 
 class Backend:
     def __init__(self) -> None:
-        pass
+        self._model = None
+        self._path = None
+        self._name = None
 
     @property
     def name(self) -> str:
-        return self.name
+        return self._name
     
     @property
     def path(self) -> str:
-        return self.path
+        return self._path
+    
+    @property
+    def info(self) -> str:
+        return self._model[["faces.age", "quality"]].describe()
 
     @property
     def meta(self) -> str:
-        return self.model["metadata"]
+        return self._model["metadata"]
+    
+    @property
+    def model(self) -> str:
+        return self._model
 
     @name.setter
-    def name(self, name) -> str:
-        self.name = name
+    def name(self, name) -> None:
+        self._name = name
     
     @path.setter
-    def path(self, path) -> str:
-        self.path = path
+    def path(self, path) -> None:
+        self._path = path
 
-    def load(self, path) -> None:
-        self.model = util.load(path)
+    def load(self) -> None:
+        if os.path.exists(self.path):
+            with open(self.path) as f:
+                data = json.load(f)
+            self._model = pd.json_normalize(data)
 
     def run(self, **flag) -> None:
-        self.model = util.run(flag)
+        self._model = util.run(flag)
 
     def save(self, path, model) -> None:
         util.save(path, model)
@@ -576,6 +667,10 @@ class Controller:
         except Exception as error:
             self.view.show_message(error)
     
+    def update(self) -> None:
+        if self.view.file:
+            self.model.path = self.view.file
+    
     def save(self, file) -> None:
         """Save results."""
 
@@ -588,5 +683,34 @@ class Controller:
     def restructure(self, model):
         pass
 
-    def image(self, uid):
+    def get_image(self, uid):
         pass
+
+    def read_info(self):
+        self.model.load()
+        print(self.model.info)
+        return self.model.info
+
+    def get_boxplot(self):
+        fig = plt.figure()
+
+        # Draw a nested boxplot to show bills by day and time
+        sns.boxplot(x="day", y="total_bill",
+                    hue="smoker", palette=["m", "g"],
+                    data=self.model)
+        sns.despine(offset=10, trim=True)
+        
+        return fig
+    
+    def get_hist(self, attr):
+        self.model.load()
+        fig, ax = plt.subplots()
+
+        sns.histplot(
+            self.model.model,
+            x="quality",
+            hue=attr,
+            multiple="stack"
+        )
+
+        return fig
