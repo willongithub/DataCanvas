@@ -205,7 +205,7 @@ class Sidebar(ttk.Frame):
             'white',
             'middle eastern',
             'latino hispanic',
-            'all'
+            'All'
         ]
         self.face_emotion_options = [
             'angry',
@@ -215,7 +215,7 @@ class Sidebar(ttk.Frame):
             'sad',
             'surprise',
             'neutral',
-            'all'
+            'All'
         ]
 
         # Create option variables
@@ -285,7 +285,7 @@ class Sidebar(ttk.Frame):
         ttk.OptionMenu(
             self.attr_1,
             self.gender_var,
-            self.face_gender_options[0],
+            self.face_gender_options[-1],
             *self.face_gender_options,
         ).pack()
         ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
@@ -293,7 +293,7 @@ class Sidebar(ttk.Frame):
         ttk.OptionMenu(
             self.attr_1,
             self.ethnicity_var,
-            self.face_ethnicity_options[0],
+            self.face_ethnicity_options[-1],
             *self.face_ethnicity_options,
         ).pack()
         ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
@@ -301,7 +301,7 @@ class Sidebar(ttk.Frame):
         ttk.OptionMenu(
             self.attr_1,
             self.emotion_var,
-            self.face_emotion_options[0],
+            self.face_emotion_options[-1],
             *self.face_emotion_options,
         ).pack()
 
@@ -655,6 +655,17 @@ class Controller:
     def __init__(self, model, view) -> None:
         self.model = model
         self.view = view
+
+        # Filter threshold
+        self.yaw = None
+        self.pitch = None
+        self.roll = None
+        self.gender = None
+        self.emotion = None
+        self.ethnicity = None
+        self.age = None
+        self.quality = None
+        self.confidance = None
     
     def run(self, **flag) -> None:
         pass
@@ -670,6 +681,17 @@ class Controller:
     def update(self) -> None:
         if self.view.file:
             self.model.path = self.view.file
+        
+        self.yaw = self.view.overview_tab.sidebar.pose_yaw.get()
+        self.pitch = self.view.overview_tab.sidebar.pose_pitch.get()
+        self.roll = self.view.overview_tab.sidebar.pose_roll.get()
+        self.age = self.view.overview_tab.sidebar.age_var.get()
+        self.quality = self.view.overview_tab.sidebar.image_quality_var.get()
+        self.confidence_var = self.view.overview_tab.sidebar.confidence_var.get()
+
+        # self.gender = self.view.overview_tab.sidebar.gender_var.get()
+        # self.ethnicity = self.view.overview_tab.sidebar.ethnicity_var.get()
+        # self.emotion = self.view.overview_tab.sidebar.emotion_var.get()
     
     def save(self, file) -> None:
         """Save results."""
@@ -679,35 +701,30 @@ class Controller:
             self.view.show_message(msg)
         except Exception as error:
             self.view.show_message(error)
-    
-    def restructure(self, model):
-        pass
 
     def get_image(self, uid):
         pass
 
+    def apply_filter(self):
+        # TODO
+        return self.model.model
+
     def read_info(self):
         self.model.load()
-        print(self.model.info)
-        return self.model.info
+        return str(self.model.info)
 
     def get_boxplot(self):
         fig = plt.figure()
-
-        # Draw a nested boxplot to show bills by day and time
-        sns.boxplot(x="day", y="total_bill",
-                    hue="smoker", palette=["m", "g"],
-                    data=self.model)
-        sns.despine(offset=10, trim=True)
-        
         return fig
     
     def get_hist(self, attr):
         self.model.load()
         fig, ax = plt.subplots()
 
+        data = self.apply_filter(self.model.model)
+
         sns.histplot(
-            self.model.model,
+            data,
             x="quality",
             hue=attr,
             multiple="stack"
