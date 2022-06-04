@@ -169,6 +169,7 @@ class Tab(ttk.Frame):
             self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
         if content == "inspector":
             self.mainframe = Inspector(self)
+            self.mainframe.path = self.parent.controller.get_folder()
             self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
 
 
@@ -380,6 +381,7 @@ class Statusbar(ttk.Frame):
             command=self._get_result
         ).pack(padx=PADDING, pady=PADDING, side='left')
         
+        # TODO: Implement pregressbar with async
         self.progress = ttk.Progressbar(
             self,
             orient='horizontal',
@@ -449,13 +451,21 @@ class Inspector(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         
-        self.path = "assets/data/"
+        self._path = None
         self.parent = parent
         self.image_list = os.listdir(self.path)
         self.img_pointer = -1
         self.MAX_SIZE = (CANVAS - PADDING, CANVAS - PADDING)
 
         self._setup_widgets()
+    
+    @property
+    def path(self) -> str:
+        return self._path
+    
+    @path.setter
+    def path(self, path):
+        self._path = path
 
     def _setup_widgets(self):
         self.Status = ttk.Frame(self)
@@ -463,8 +473,10 @@ class Inspector(ttk.Frame):
         self.image = ttk.LabelFrame(self, text='Image Viwer')
         self.image.pack()
 
+        # TODO: Show resolution, filename
         self.annotation = ttk.Label(self.image, text='Dog/Cat')
         self.annotation.pack(padx=PADDING, pady=PADDING, side='bottom')
+
         self.canvas = tk.Canvas(self.image, height=CANVAS, width=CANVAS)
         self.canvas.pack(padx=PADDING, pady=PADDING)
         
@@ -594,6 +606,7 @@ class Backend:
             with open(self.path) as f:
                 data = json.load(f)
             self._model = pd.json_normalize(data)
+            self._path = self._model["metadata"]["path"]
 
     def run(self, **flag) -> None:
         self._model = util.run(flag)
@@ -621,7 +634,7 @@ class Controller:
         self.confidance = None
     
     def run(self, **flag) -> None:
-        pass
+        self.view.run(flag)
     
     def load(self) -> None:
         """Load existing results."""
@@ -655,8 +668,8 @@ class Controller:
         except Exception as error:
             self.view.show_message(error)
 
-    def get_image(self, uid):
-        pass
+    def get_folder(self):
+        return self.view.path
 
     def apply_filter(self):
         # TODO: Return filtered model
