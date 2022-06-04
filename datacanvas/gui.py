@@ -16,7 +16,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
                                                NavigationToolbar2Tk)
-from PIL import Image, ImageTk
+from PIL import Image, ImageOps, ImageTk
 
 import datacanvas.utils as util
 
@@ -26,6 +26,8 @@ SIDEBAR = 200
 SHELL = 400
 PADDING = 10
 CANVAS = 700
+
+TYPE = ('.jpg', '.jpeg','.png')
 
 
 class DataCanvas(tk.Tk):
@@ -86,27 +88,21 @@ class Page(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        Control(self).pack(side='bottom')
+        Statusbar(self).pack(side='bottom')
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(padx=PADDING, pady=PADDING, side='left')
 
         self.canvas_plot = tk.Canvas()
 
         # Shell style output area
-        self.shell = ScrolledText(
-            self,
-            bg='gray20',
-            fg='lime green',
-            height=HEIGHT
-        )
-        self.shell.pack(side='left')
+        self.shell = Shell(self)
 
         # Tabs
         self.overview_tab = Tab(self, "overview")
-        self.selector_tab = Tab(self, "selector")
+        self.inspector_tab = Tab(self, "inspector")
         
         self.notebook.add(self.overview_tab, text="Overview")
-        self.notebook.add(self.selector_tab, text="Selector")
+        self.notebook.add(self.inspector_tab, text="Inspector")
     
     def get_results(self):
         if self.overview_tab.sidebar.path:
@@ -114,20 +110,20 @@ class Page(ttk.Frame):
         
         self._update_content()
 
-    def set_controller(self, controller):
-        self.controller = controller
+    def set_controller(self, Controller):
+        self.controller = Controller
     
     # Draw plot on canvas.
     def _update_content(self):
         self.controller.update()
         info = self.controller.read_info()
 
-        self._insert_shell('in progress...')
-        self._insert_shell('=========================')
+        self.shell.insert('in progress...')
+        self.shell.insert('=========================')
         # for item in info:
-        #     self._insert_shell(item)
-        self._insert_shell(info)
-        self._insert_shell('\n\n')
+        #     self.shell.insert(item)
+        self.shell.insert(info)
+        self.shell.insert('\n\n')
 
         plot_1 = self.controller.get_hist('faces.gender')
         widget_1 = self.overview_tab.mainframe.fig_1
@@ -140,23 +136,6 @@ class Page(ttk.Frame):
         plot = self.controller.get_hist('faces.dominant_race')
         widget = self.overview_tab.mainframe.fig_3
         self._render_plot(widget, plot)
-
-    def _insert_shell(self, output):
-        self.shell.insert(tk.INSERT, f' {output}\n')
-        self.shell.see("end")
-
-    def _clear_shell(self):
-        answer = askokcancel(
-            title='Confirmation',
-            message='CLI outout will be removed.',
-            icon=WARNING
-        )
-        if answer:
-            self.shell.delete('1.0', tk.END)
-            showinfo(
-                title='Status',
-                message='CLI output all clear.'
-            )
 
     def _render_plot(self, widget, plot):
         if self.canvas_plot:
@@ -172,9 +151,12 @@ class Page(ttk.Frame):
 
 
 class Tab(ttk.Frame):
+    # TODO: Refactor so that content objects passed from parent
     def __init__(self, parent, content):
         super().__init__(parent)
         
+        self.parent = parent
+
         # Create widget
         self._setup_widgets(content)
 
@@ -185,8 +167,8 @@ class Tab(ttk.Frame):
             self.sidebar.pack(side='left')
             self.mainframe = Plot(self)
             self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
-        if content == "selector":
-            self.mainframe = Selector(self)
+        if content == "inspector":
+            self.mainframe = Inspector(self)
             self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
 
 
@@ -367,15 +349,15 @@ class Sidebar(ttk.Frame):
             self.path = filepath
 
 
-class Control(ttk.Frame):
+class Statusbar(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
         self.parent = parent
 
-        self._setup_widgets(parent)
+        self._setup_widgets()
 
-    def _setup_widgets(self, parent):
+    def _setup_widgets(self):
         ttk.Button(
             self,
             text='Dark Mode',
@@ -395,7 +377,7 @@ class Control(ttk.Frame):
             self,
             text='Apply',
             style='Accent.TButton',
-            command=parent.get_results
+            command=self._get_result
         ).pack(padx=PADDING, pady=PADDING, side='left')
         
         self.progress = ttk.Progressbar(
@@ -414,17 +396,10 @@ class Control(ttk.Frame):
             self.process.pack_forget()
 
     def _clear_shell(self):
-        answer = askokcancel(
-            title='Confirmation',
-            message='CLI outout will be removed.',
-            icon=WARNING
-        )
-        if answer:
-            self.parent.shell.delete('1.0', tk.END)
-            showinfo(
-                title='Status',
-                message='CLI output all clear.'
-            )
+        self.parent.shell.clear()
+    
+    def _get_result(self):
+        self.parent.get_results()
     
     def _change_theme(self):
         if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
@@ -470,23 +445,21 @@ class Plot(ttk.Frame):
         self.canvas.add(self.fig_3, text='Fig 3')
 
 
-class Selector(ttk.Frame):
+class Inspector(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
-
-        self.image_list = [
-            ImageTk.PhotoImage(Image.open("assets/image/img_1.jpg").resize((CANVAS, CANVAS))),
-            ImageTk.PhotoImage(Image.open("assets/image/img_2.jpg").resize((CANVAS, CANVAS))),
-            ImageTk.PhotoImage(Image.open("assets/image/img_3.jpg").resize((CANVAS, CANVAS)))
-        ]
-
-        self.count = 0
+        
+        self.path = "assets/data/"
+        self.parent = parent
+        self.image_list = os.listdir(self.path)
+        self.img_pointer = -1
+        self.MAX_SIZE = (CANVAS - PADDING, CANVAS - PADDING)
 
         self._setup_widgets()
 
     def _setup_widgets(self):
-        self.control = ttk.Frame(self)
-        self.control.pack(side='bottom')
+        self.Status = ttk.Frame(self)
+        self.Status.pack(side='bottom')
         self.image = ttk.LabelFrame(self, text='Image Viwer')
         self.image.pack()
 
@@ -494,112 +467,92 @@ class Selector(ttk.Frame):
         self.annotation.pack(padx=PADDING, pady=PADDING, side='bottom')
         self.canvas = tk.Canvas(self.image, height=CANVAS, width=CANVAS)
         self.canvas.pack(padx=PADDING, pady=PADDING)
-
-        self.canvas.create_image(
-            CANVAS/2, CANVAS/2,
-            image=self.image_list[self.count])
         
         self.button_back = ttk.Button(
-            self.control,
-            # command=self._back,
-            state=tk.DISABLED,
+            self.Status,
+            command=lambda : self.display_image(-1),
             text="  <  ")
         
         self.button_forward = ttk.Button(
-            self.control,
-            command=self._forward,
+            self.Status,
+            command=lambda : self.display_image(1),
             text="  >  ")
         
         self.button_delete = ttk.Button(
-            self.control,
-            command=self._delete,
-            state=tk.DISABLED,
+            self.Status,
+            command=self._toggle,
             text="  x  ")
         
         self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
         self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
         self.button_delete.pack(padx=PADDING, pady=PADDING, side='left')
-    
-    def _delete(self):
+
+        self.display_image(1)
+
+    def display_image(self, offset):
+        try:
+            self.img_pointer += offset
+            entry = self.image_list[self.img_pointer]
+            while not entry.endswith(TYPE):
+                self.img_pointer += offset
+                entry = self.image_list[self.img_pointer]
+        except IndexError:
+            showinfo(
+                title='Note',
+                message='Out of image.'
+            )
+            self.img_pointer -= offset
+            return
+        self.entry = os.path.join(self.path, entry)
+        self.img = ImageTk.PhotoImage(
+            ImageOps.pad(Image.open(self.entry), self.MAX_SIZE))
+        # self.canvas.delete('all')
+        self.canvas.create_image(
+            CANVAS/2, CANVAS/2,
+            image=self.img)
+
+    def display_meta():
+        # TODO: Insert image metadata into shell
         pass
 
-    def _forward(self):
-        self.canvas.delete('all')
-        self.count += 1
-
-        self.canvas.create_image(CANVAS/2, CANVAS/2, image=self.image_list[self.count])
-
-        if self.count > 0:
-            self.button_back.pack_forget()
-            self.button_forward.pack_forget()
-            self.button_back = ttk.Button(
-                self.control,
-                command=self._back,
-                text="  <  ")
-            self.button_forward = ttk.Button(
-                self.control,
-                command=self._forward,
-                text="  >  ")
-            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
-            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
-
-        if self.count == 2:
-            self.button_back.pack_forget()
-            self.button_forward.pack_forget()
-            self.button_back = ttk.Button(
-                self.control,
-                command=self._back,
-                text="  <  ")
-            self.button_forward = ttk.Button(
-                self.control,
-                text="  >  ",
-                state=tk.DISABLED)
-            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
-            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
-
-    def _back(self):
-        self.canvas.delete('all')
-        self.count -= 1
-    
-        self.canvas.create_image(CANVAS/2, CANVAS/2, image=self.image_list[self.count])
-
-        if self.count < 2:
-            self.button_back.pack_forget()
-            self.button_forward.pack_forget()
-            self.button_back = ttk.Button(
-                self.control,
-                command=self._back,
-                text="  <  ")
-            self.button_forward = ttk.Button(
-                self.control,
-                command=self._forward,
-                text="  >  ")
-            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
-            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
-    
-        if self.count == 0:
-            self.button_back.pack_forget()
-            self.button_forward.pack_forget()
-            self.button_back = ttk.Button(
-                self.control,
-                text="  <  ",
-                state=tk.DISABLED)
-            self.button_forward = ttk.Button(
-                self.control,
-                command=self._forward,
-                text="  >  ")
-            self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
-            self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
+    def _toggle(self):
+        # TODO: Add remark of image in the JSON file
+        self.parent.parent.controller.toggle_image()
 
 
 class Shell(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.setup_widgets()
+        self.parent = parent
 
-    def setup_widgets(self):
-        pass
+        self._setup_widgets()
+
+    def _setup_widgets(self):
+        self.shell = ScrolledText(
+            self.parent,
+            bg='gray20',
+            fg='lime green',
+            height=HEIGHT
+        )
+        self.shell.pack(side='left')
+
+    def insert(self, output):
+        self.shell.insert(tk.INSERT, f' {output}\n')
+        self.shell.see("end")
+
+    def clear(self):
+        answer = askokcancel(
+            title='Confirmation',
+            message='CLI outout will be removed.',
+            icon=WARNING
+        )
+        if answer:
+            self.shell.delete('1.0', tk.END)
+            showinfo(
+                title='Status',
+                message='CLI output all clear.'
+            )
 
 
 class Backend:
@@ -706,8 +659,16 @@ class Controller:
         pass
 
     def apply_filter(self):
-        # TODO
+        # TODO: Return filtered model
         return self.model.model
+
+    def get_stat(self):
+        # TODO: Return stat of the model
+        pass
+
+    def toggle_image(self):
+        # TODO: Mark the image
+        pass
 
     def read_info(self):
         self.model.load()
@@ -721,7 +682,7 @@ class Controller:
         self.model.load()
         fig, ax = plt.subplots()
 
-        data = self.apply_filter(self.model.model)
+        data = self.apply_filter()
 
         sns.histplot(
             data,
