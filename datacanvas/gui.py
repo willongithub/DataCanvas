@@ -24,7 +24,7 @@ WIDTH = 1280
 HEIGHT = 800
 SIDEBAR = 200
 SHELL = 400
-PADDING = 10
+PADDING = 5
 CANVAS = 700
 
 TYPE = ('.jpg', '.jpeg','.png')
@@ -67,7 +67,7 @@ class DataCanvas(tk.Tk):
     def _setup_app(self):
         # Setup Model
         self.model = Backend()
-        self.model.path = 'assets/test.json'
+        self.model.results = 'assets/test.json'
 
         # Setup View
         self.view = Page(self)
@@ -82,60 +82,62 @@ class Page(ttk.Frame):
         super().__init__(parent)
 
         self.controller = None
-        self.file = None
+        self.results = None
+        self.selected = False
+        self.canvas_plot = tk.Canvas()
     
         # Create widget
         self._setup_widgets()
 
     def _setup_widgets(self):
-        Statusbar(self).pack(side='bottom')
+        Statusbar(self).pack(padx=PADDING, fill='x', side='bottom')
         self.notebook = ttk.Notebook(self)
-        self.notebook.pack(padx=PADDING, pady=PADDING, side='left')
-
-        self.canvas_plot = tk.Canvas()
-
-        # Shell style output area
-        self.shell = Shell(self)
+        self.notebook.pack(padx=PADDING, pady=PADDING)
 
         # Tabs
-        self.overview_tab = Tab(self, "overview")
-        self.inspector_tab = Tab(self, "inspector")
+        self.overview = Tab(self, "overview")
+        self.inspector = Tab(self, "inspector")
         
-        self.notebook.add(self.overview_tab, text="Overview")
-        self.notebook.add(self.inspector_tab, text="Inspector")
+        self.notebook.add(self.overview, text="Overview")
+        self.notebook.add(self.inspector, text="Inspector")
     
     def get_results(self):
-        if self.overview_tab.sidebar.path:
-            self.file = self.overview_tab.sidebar.path
+        if self.overview.sidebar.path:
+            self.results = self.overview.sidebar.path
+            self.selected = True
+        else:
+            self.results = self.controller.get_results()
         
         self._update_content()
 
     def set_controller(self, Controller):
         self.controller = Controller
     
-    # Draw plot on canvas.
+    # Update model shown.
     def _update_content(self):
+        # Update data model
         self.controller.update()
+
+        # Update shell area
         info = self.controller.read_info()
+        for item in info.items():
+            self.overview.shell.insert(item)
 
-        self.shell.insert('in progress...')
-        self.shell.insert('=========================')
-        # for item in info:
-        #     self.shell.insert(item)
-        self.shell.insert(info)
-        self.shell.insert('\n\n')
-
+        # Update plots area
         plot_1 = self.controller.get_hist('faces.gender')
-        widget_1 = self.overview_tab.mainframe.fig_1
+        widget_1 = self.overview.mainframe.fig_1
         self._render_plot(widget_1, plot_1)
 
-        plot = self.controller.get_hist('faces.dominant_emotion')
-        widget = self.overview_tab.mainframe.fig_2
-        self._render_plot(widget, plot)
+        plot_2 = self.controller.get_hist('faces.dominant_emotion')
+        widget_2 = self.overview.mainframe.fig_2
+        self._render_plot(widget_2, plot_2)
 
-        plot = self.controller.get_hist('faces.dominant_race')
-        widget = self.overview_tab.mainframe.fig_3
-        self._render_plot(widget, plot)
+        plot_3 = self.controller.get_hist('faces.dominant_race')
+        widget_3 = self.overview.mainframe.fig_3
+        self._render_plot(widget_3, plot_3)
+
+        # Update image inspector area
+        self.inspector.mainframe.update_meta_list()
 
     def _render_plot(self, widget, plot):
         if self.canvas_plot:
@@ -163,14 +165,21 @@ class Tab(ttk.Frame):
     def _setup_widgets(self, content):      
         # Child widget
         if content == "overview":
-            self.sidebar = Sidebar(self)
-            self.sidebar.pack(side='left')
-            self.mainframe = Plot(self)
-            self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
+            self.label = ttk.Labelframe(self, text="Main")
+            self.label.pack(padx=PADDING, pady=PADDING, side='left')
+            self.sidebar = Sidebar(self.label)
+            self.sidebar.pack(padx=PADDING, pady=PADDING, side='left', fill='y')
+            self.mainframe = Plot(self.label)
+            self.mainframe.pack(padx=PADDING, pady=PADDING, side='bottom')
+            self.shell = Shell(self)
+            self.shell.pack(side='left')
         if content == "inspector":
-            self.mainframe = Inspector(self)
-            self.mainframe.path = self.parent.controller.get_folder()
-            self.mainframe.pack(side='bottom', padx=PADDING, pady=PADDING)
+            self.label = ttk.Labelframe(self, text="Main")
+            self.label.pack(padx=PADDING, pady=PADDING, side='left')
+            self.mainframe = Inspector(self.label, self)
+            self.mainframe.pack(padx=PADDING, pady=PADDING, side='bottom')
+            self.shell = Shell(self)
+            self.shell.pack(side='left')
 
 
 class Sidebar(ttk.Frame):
@@ -225,10 +234,10 @@ class Sidebar(ttk.Frame):
             self,
             text='Files',
         )
-        self.io.pack(padx=PADDING, pady=PADDING)
+        self.io.pack(padx=PADDING, pady=PADDING, fill='x')
         ttk.Button(
             self.io,
-            text='Select JSON file',
+            text='Open output JSON file',
             command=self._select_file
         ).pack(padx=PADDING, pady=PADDING)
 
@@ -361,25 +370,25 @@ class Statusbar(ttk.Frame):
     def _setup_widgets(self):
         ttk.Button(
             self,
-            text='Dark Mode',
-            command=self._change_theme
-        ).pack(padx=PADDING, pady=PADDING, side='left')
-        # ttk.Button(
-        #     self,
-        #     text='Exit',
-        #     command=self._exit
-        # ).pack(padx=PADDING, pady=PADDING, side='left')
-        ttk.Button(
-            self,
-            text='Clear',
-            command=self._clear_shell
-        ).pack(padx=PADDING, pady=PADDING, side='left')
-        ttk.Button(
-            self,
-            text='Apply',
+            text='Apply Filter',
             style='Accent.TButton',
             command=self._get_result
         ).pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Button(
+            self,
+            text='EXIT',
+            command=self._exit
+        ).pack(padx=PADDING, pady=PADDING, side='right')
+        ttk.Button(
+            self,
+            text='Dark Mode',
+            command=self._change_theme
+        ).pack(padx=PADDING, pady=PADDING, side='right')
+        # ttk.Button(
+        #     self,
+        #     text='Clear',
+        #     command=self._clear_shell
+        # ).pack(padx=PADDING, pady=PADDING, side='left')
         
         # TODO: Implement pregressbar with async
         self.progress = ttk.Progressbar(
@@ -391,6 +400,7 @@ class Statusbar(ttk.Frame):
     
     def _process(self, flag):
         if flag == 'start':
+            ttk.Separator(self, orient='vertical').pack(fill='y', side='left')
             self.progress.pack(padx=PADDING, pady=PADDING, side='left')
             self.progress.start
         if flag == 'end':
@@ -405,11 +415,13 @@ class Statusbar(ttk.Frame):
     
     def _change_theme(self):
         if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
-            # Set light theme
             self.tk.call("set_theme", "light")
+            self.parent.overview.shell.shell.config(bg='gray90', fg='black')
+            self.parent.inspector.shell.shell.config(bg='gray90', fg='black')
         else:
-            # Set light theme
             self.tk.call("set_theme", "dark")
+            self.parent.overview.shell.shell.config(bg='gray20', fg='lime green')
+            self.parent.inspector.shell.shell.config(bg='gray20', fg='lime green')
     
     def _exit(self):
         answer = askokcancel(
@@ -433,9 +445,9 @@ class Plot(ttk.Frame):
             width=WIDTH-SHELL-SIDEBAR,
             height=HEIGHT
         )
-        self.canvas.pack(pady=PADDING, side='left')
+        self.canvas.pack(padx=PADDING, pady=PADDING, side='left')
 
-        # Tabs for plots
+        # One plot for each tab
         self.fig_1 = ttk.Frame(self.canvas)
         self.fig_1.pack(side='left', fill='y')
         self.canvas.add(self.fig_1, text='Fig 1')
@@ -448,87 +460,84 @@ class Plot(ttk.Frame):
 
 
 class Inspector(ttk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, tab):
         super().__init__(parent)
         
-        self._path = None
-        self.parent = parent
-        self.image_list = os.listdir(self.path)
+        self.parent = tab
+        self.meta_list = None
+        self.remark = tk.StringVar(value='Enter remarks here')
         self.img_pointer = -1
         self.MAX_SIZE = (CANVAS - PADDING, CANVAS - PADDING)
 
         self._setup_widgets()
-    
-    @property
-    def path(self) -> str:
-        return self._path
-    
-    @path.setter
-    def path(self, path):
-        self._path = path
 
     def _setup_widgets(self):
-        self.Status = ttk.Frame(self)
-        self.Status.pack(side='bottom')
-        self.image = ttk.LabelFrame(self, text='Image Viwer')
-        self.image.pack()
+        self.task = ttk.Frame(self)
+        self.task.pack(side='bottom')
 
-        # TODO: Show resolution, filename
-        self.annotation = ttk.Label(self.image, text='Dog/Cat')
-        self.annotation.pack(padx=PADDING, pady=PADDING, side='bottom')
-
-        self.canvas = tk.Canvas(self.image, height=CANVAS, width=CANVAS)
+        self.annotation = ttk.Label(self, text='')
+        self.annotation.pack(side='bottom')
+        
+        self.canvas = tk.Canvas(self, height=CANVAS, width=CANVAS)
         self.canvas.pack(padx=PADDING, pady=PADDING)
         
-        self.button_back = ttk.Button(
-            self.Status,
+        ttk.Button(
+            self.task,
+            command=self.toggle_image,
+            text="Delete"
+            ).pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Button(
+            self.task,
             command=lambda : self.display_image(-1),
-            text="  <  ")
-        
-        self.button_forward = ttk.Button(
-            self.Status,
+            text="Prev").pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Button(
+            self.task,
             command=lambda : self.display_image(1),
-            text="  >  ")
-        
-        self.button_delete = ttk.Button(
-            self.Status,
-            command=self._toggle,
-            text="  x  ")
-        
-        self.button_back.pack(padx=PADDING, pady=PADDING, side='left')
-        self.button_forward.pack(padx=PADDING, pady=PADDING, side='left')
-        self.button_delete.pack(padx=PADDING, pady=PADDING, side='left')
-
-        self.display_image(1)
+            text="Next"
+            ).pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Button(
+            self.task,
+            command=lambda : self.save_remark(self.remark.get()),
+            text="Comment"
+            ).pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Entry(self.task,
+            textvariable=self.remark
+            ).pack(padx=PADDING, pady=PADDING, side='left')
 
     def display_image(self, offset):
         try:
             self.img_pointer += offset
-            entry = self.image_list[self.img_pointer]
-            while not entry.endswith(TYPE):
-                self.img_pointer += offset
-                entry = self.image_list[self.img_pointer]
-        except IndexError:
+            if self.img_pointer < 0:
+                self.img_pointer = 0
+            self.file = self.meta_list.loc[self.img_pointer]['file']
+        except ValueError:
             showinfo(
                 title='Note',
-                message='Out of image.'
+                message='Out of Range.'
             )
             self.img_pointer -= offset
             return
-        self.entry = os.path.join(self.path, entry)
-        self.img = ImageTk.PhotoImage(
-            ImageOps.pad(Image.open(self.entry), self.MAX_SIZE))
-        # self.canvas.delete('all')
+        self.img = Image.open(self.file)
+        self.annotation.config(
+            text = f"File: {self.file}  |  Size: {self.img.size}")
+        self.img = ImageTk.PhotoImage(ImageOps.pad(self.img, self.MAX_SIZE))
         self.canvas.create_image(
             CANVAS/2, CANVAS/2,
             image=self.img)
+        self.display_meta(self.meta_list.loc[self.img_pointer])
+    
+    def update_meta_list(self):
+        self.meta_list = self.parent.parent.controller.get_model()
+        self.display_image(1)
 
-    def display_meta():
-        # TODO: Insert image metadata into shell
-        pass
+    def display_meta(self, meta):
+        self.parent.shell.shell.delete('1.0', tk.END)
+        self.parent.shell.insert(meta)
 
-    def _toggle(self):
-        # TODO: Add remark of image in the JSON file
+    def save_remark(self, remark):
+        self.parent.parent.controller.save_remark(remark)
+
+    def toggle_image(self):
         self.parent.parent.controller.toggle_image()
 
 
@@ -541,13 +550,18 @@ class Shell(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
+        self.label = ttk.LabelFrame(self, text="Metadata")
         self.shell = ScrolledText(
-            self.parent,
-            bg='gray20',
-            fg='lime green',
-            height=HEIGHT
+            self.label,
+            # bg='gray20',
+            # fg='lime green',
+            bg='gray90',
+            fg='black',
+            height=HEIGHT,
+            width=SHELL
         )
-        self.shell.pack(side='left')
+        self.label.pack(padx=PADDING, pady=PADDING, side='left')
+        self.shell.pack(padx=PADDING, pady=PADDING)
 
     def insert(self, output):
         self.shell.insert(tk.INSERT, f' {output}\n')
@@ -570,43 +584,41 @@ class Shell(ttk.Frame):
 class Backend:
     def __init__(self) -> None:
         self._model = None
-        self._path = None
-        self._name = None
-
-    @property
-    def name(self) -> str:
-        return self._name
-    
-    @property
-    def path(self) -> str:
-        return self._path
-    
-    @property
-    def info(self) -> str:
-        return self._model[["faces.age", "quality"]].describe()
-
-    @property
-    def meta(self) -> str:
-        return self._model["metadata"]
+        self._info = None
+        self._files = None
+        self._results = None
     
     @property
     def model(self) -> str:
         return self._model
-
-    @name.setter
-    def name(self, name) -> None:
-        self._name = name
     
-    @path.setter
-    def path(self, path) -> None:
-        self._path = path
+    @property
+    def files(self) -> str:
+        return self._files
+    
+    @property
+    def results(self) -> str:
+        return self._results
+    
+    @property
+    def info(self) -> str:
+        return self._info
 
-    def load(self) -> None:
-        if os.path.exists(self.path):
-            with open(self.path) as f:
+    @files.setter
+    def files(self, path) -> None:
+        self._files = path
+    
+    @results.setter
+    def results(self, path) -> None:
+        self._results = path
+
+    def load_results(self) -> None:
+        if os.path.exists(self._results):
+            with open(self._results) as f:
                 data = json.load(f)
-            self._model = pd.json_normalize(data)
-            self._path = self._model["metadata"]["path"]
+            self._model = pd.json_normalize(data["output"])
+            self._info = data["metadata"]
+            self._files = data["metadata"]["files"]
 
     def run(self, **flag) -> None:
         self._model = util.run(flag)
@@ -631,33 +643,36 @@ class Controller:
         self.ethnicity = None
         self.age = None
         self.quality = None
-        self.confidance = None
+        self.confidence = None
+
+        self.load()
     
     def run(self, **flag) -> None:
         self.view.run(flag)
     
     def load(self) -> None:
-        """Load existing results."""
-
         try:
-            self.model.load()
+            self.model.load_results()
         except Exception as error:
             self.view.show_message(error)
     
     def update(self) -> None:
-        if self.view.file:
-            self.model.path = self.view.file
+        if self.view.selected:
+            self.model.path = self.view.results
+            self.load()
         
-        self.yaw = self.view.overview_tab.sidebar.pose_yaw.get()
-        self.pitch = self.view.overview_tab.sidebar.pose_pitch.get()
-        self.roll = self.view.overview_tab.sidebar.pose_roll.get()
-        self.age = self.view.overview_tab.sidebar.age_var.get()
-        self.quality = self.view.overview_tab.sidebar.image_quality_var.get()
-        self.confidence_var = self.view.overview_tab.sidebar.confidence_var.get()
+        self.yaw = self.view.overview.sidebar.pose_yaw.get()
+        self.pitch = self.view.overview.sidebar.pose_pitch.get()
+        self.roll = self.view.overview.sidebar.pose_roll.get()
+        self.age = self.view.overview.sidebar.age_var.get()
+        self.quality = self.view.overview.sidebar.image_quality_var.get()
+        self.confidence = self.view.overview.sidebar.confidence_var.get()
 
-        # self.gender = self.view.overview_tab.sidebar.gender_var.get()
-        # self.ethnicity = self.view.overview_tab.sidebar.ethnicity_var.get()
-        # self.emotion = self.view.overview_tab.sidebar.emotion_var.get()
+        self.gender = self.view.overview.sidebar.gender_var.get()
+        self.ethnicity = self.view.overview.sidebar.ethnicity_var.get()
+        self.emotion = self.view.overview.sidebar.emotion_var.get()
+
+        self.apply_filter()
     
     def save(self, file) -> None:
         """Save results."""
@@ -668,8 +683,14 @@ class Controller:
         except Exception as error:
             self.view.show_message(error)
 
-    def get_folder(self):
-        return self.view.path
+    def get_files(self):
+        return self.model.files
+
+    def get_results(self):
+        return self.model.results
+    
+    def get_model(self):
+        return self.model.model
 
     def apply_filter(self):
         # TODO: Return filtered model
@@ -680,19 +701,23 @@ class Controller:
         pass
 
     def toggle_image(self):
-        # TODO: Mark the image
+        # TODO: Toggle image in the JSON file
+        pass
+
+    def save_remark(self, remark):
+        # TODO: Save image remark in the JSON file
         pass
 
     def read_info(self):
-        self.model.load()
-        return str(self.model.info)
+        return self.model.info
 
+    # Plots for data model overview
+    # TODO: Build plots
     def get_boxplot(self):
         fig = plt.figure()
         return fig
     
     def get_hist(self, attr):
-        self.model.load()
         fig, ax = plt.subplots()
 
         data = self.apply_filter()

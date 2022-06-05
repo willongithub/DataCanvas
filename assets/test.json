@@ -1,6 +1,6 @@
 {
     "metadata": {
-        "file": "assets/data/",
+        "files": "assets/data/",
         "results": "assets/data/out/",
         "count": 10,
         "failed": 0
@@ -8,7 +8,7 @@
     "output": [
         {
             "uuid": "be191b72-2e0a-5435-8410-6b8b1cf52150",
-            "file": "data/helen_1/11564757_2.jpg",
+            "file": "assets/data/000100.jpg",
             "quality": 26.37005954494245,
             "faces": {
                 "age": 31,
@@ -53,7 +53,7 @@
         },
         {
             "uuid": "7fb62135-08ac-56d3-a407-e84d949533fd",
-            "file": "data/helen_1/142661608_1.jpg",
+            "file": "assets/data/000101.jpg",
             "quality": 32.859077634102135,
             "faces": {
                 "age": 33,
@@ -98,7 +98,7 @@
         },
         {
             "uuid": "ab4e065e-a582-57a8-b3dd-d372645d2db7",
-            "file": "data/helen_1/137346980_1.jpg",
+            "file": "assets/data/000102.jpg",
             "quality": 19.62423764772697,
             "faces": {
                 "age": 27,
@@ -143,7 +143,7 @@
         },
         {
             "uuid": "35b5150a-c079-57fd-b8a3-5541cc65f727",
-            "file": "data/helen_1/274928922_1.jpg",
+            "file": "assets/data/000103.jpg",
             "quality": 38.09322011993319,
             "faces": {
                 "age": 34,
@@ -188,7 +188,7 @@
         },
         {
             "uuid": "f607e830-6c0a-5377-afe5-c8287e6d97c1",
-            "file": "data/helen_1/185377791_1.jpg",
+            "file": "assets/data/000104.jpg",
             "quality": 12.138248807544954,
             "faces": {
                 "age": 31,
@@ -233,7 +233,7 @@
         },
         {
             "uuid": "1781ce9c-6652-512d-aa43-f827b49dfe1b",
-            "file": "data/helen_1/1252885598_1.jpg",
+            "file": "assets/data/000105.jpg",
             "quality": 19.985891847766396,
             "faces": {
                 "age": 32,
@@ -278,7 +278,7 @@
         },
         {
             "uuid": "d35d6125-852b-5a67-a1f5-ba1bf2c7050e",
-            "file": "data/helen_1/105538305_1.jpg",
+            "file": "assets/data/000106.jpg",
             "quality": 10.284951934076702,
             "faces": {
                 "age": 22,
@@ -323,7 +323,7 @@
         },
         {
             "uuid": "248a5b8a-e3a8-5e05-9b8e-92bd2a1415eb",
-            "file": "data/helen_1/13601661_1.jpg",
+            "file": "assets/data/000107.jpg",
             "quality": 27.90947928928321,
             "faces": {
                 "age": 26,
@@ -368,7 +368,7 @@
         },
         {
             "uuid": "7b9945c3-035d-5eb3-b62a-e9de843ca93b",
-            "file": "data/helen_1/245871800_1.jpg",
+            "file": "assets/data/000108.jpg",
             "quality": 41.32455676421293,
             "faces": {
                 "age": 39,
@@ -413,7 +413,7 @@
         },
         {
             "uuid": "fcecbab5-87ec-5f9e-91b9-285fde634aa3",
-            "file": "data/helen_1/108349477_1.jpg",
+            "file": "assets/data/000109.jpg",
             "quality": 33.118366626299206,
             "faces": {
                 "age": 30,
