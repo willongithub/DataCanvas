@@ -134,8 +134,13 @@ class Page(ttk.Frame):
         self.controller.update()
 
         # Update shell area
+        self.plot_shell.insert("### Dataset Info ###")
         info = self.controller.get_info()
         self.plot_shell.insert(json.dumps(info, indent=4))
+        self.plot_shell.insert("### Simple Stat ###")
+        stat = self.controller.get_stat()
+        for item in stat:
+            self.plot_shell.insert(item)
 
         # Update plots area
         plot_1 = self.controller.get_hist('faces.gender')
@@ -726,12 +731,19 @@ class Controller:
     
     def get_stat(self):
         # TODO: Return stat of the model
-        # stat = self.model.model.agg(
-        #     "uuid": ["count"],
-
-        # )
-        # return stat
-        pass
+        file = int(self.model.model["file"].count())
+        age = int(self.model.model["faces.age"].mean())
+        gender = self.model.model["faces.gender"].value_counts(normalize=True).to_string()
+        ethnicity = self.model.model["faces.dominant_race"].value_counts(normalize=True).to_string()
+        emotion = self.model.model["faces.dominant_emotion"].value_counts(normalize=True).to_string()
+        stat = [
+            f"> File count:\n{file}",
+            f"> Average age:\n{age}",
+            f"> Gender:\n{gender}",
+            f"> Ethnicity:\n{ethnicity}",
+            f"> Emotion:\n{emotion}"
+        ]
+        return stat
 
     # Plots for data model overview
     # TODO: Build plots
