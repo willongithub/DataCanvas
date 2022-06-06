@@ -9,7 +9,6 @@ from platform import system
 from tkinter import filedialog as fd
 from tkinter import ttk
 from tkinter.messagebox import WARNING, askokcancel, showinfo
-from tkinter.scrolledtext import ScrolledText
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -135,9 +134,8 @@ class Page(ttk.Frame):
         self.controller.update()
 
         # Update shell area
-        info = self.controller.read_info()
-        for item in info.items():
-            self.plot_shell.insert(item)
+        info = self.controller.get_info()
+        self.plot_shell.insert(json.dumps(info, indent=4))
 
         # Update plots area
         plot_1 = self.controller.get_hist('faces.gender')
@@ -412,12 +410,12 @@ class Statusbar(ttk.Frame):
     def _change_theme(self):
         if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
             self.tk.call("set_theme", "light")
-            self.parent.image_shell.shell.config(bg='gray90', fg='black')
+            self.parent.plot_shell.shell.config(bg='gray90', fg='black')
             self.parent.image_shell.shell.config(bg='gray90', fg='black')
         else:
             self.tk.call("set_theme", "dark")
             self.parent.plot_shell.shell.config(bg='gray20', fg='lime green')
-            self.parent.plot_shell.shell.config(bg='gray20', fg='lime green')
+            self.parent.image_shell.shell.config(bg='gray20', fg='lime green')
     
     def _exit(self):
         # TODO: Check fale save flag
@@ -529,15 +527,16 @@ class Inspector(ttk.Frame):
         self.canvas.create_image(
             (CANVAS+SHELL)/2, CANVAS/2,
             image=self.img)
-        self.display_meta(self.meta_list.loc[self.img_pointer])
+        self.display_meta(self.img_pointer)
     
     def update_meta_list(self):
         self.meta_list = self.parent.controller.get_model()
         self.display_image(1)
 
-    def display_meta(self, meta):
+    def display_meta(self, pointer):
         self.parent.image_shell.shell.delete('1.0', tk.END)
-        self.parent.image_shell.insert(meta)
+        meta = self.parent.controller.get_raw()[pointer]
+        self.parent.image_shell.insert(json.dumps(meta, indent=4))
 
     def show_mask(self):
         # TODO: show detection mask
@@ -560,7 +559,7 @@ class Shell(ttk.Frame):
 
     def _setup_widgets(self):
         self.label = ttk.LabelFrame(self, text="Metadata")
-        self.shell = ScrolledText(
+        self.shell = tk.Text(
             self.label,
             # bg='gray20',
             # fg='lime green',
@@ -573,7 +572,7 @@ class Shell(ttk.Frame):
         self.shell.pack(padx=PADDING, pady=PADDING)
 
     def insert(self, output):
-        self.shell.insert(tk.INSERT, f' {output}\n')
+        self.shell.insert(tk.INSERT, f'{output}\n')
         self.shell.see("end")
 
     def clear(self):
@@ -593,6 +592,7 @@ class Shell(ttk.Frame):
 class Backend:
     def __init__(self) -> None:
         self._model = None
+        self._raw = None
         self._info = None
         self._files = None
         self._results = None
@@ -600,6 +600,10 @@ class Backend:
     @property
     def model(self) -> str:
         return self._model
+    
+    @property
+    def raw(self) -> str:
+        return self._raw
     
     @property
     def files(self) -> str:
@@ -626,6 +630,7 @@ class Backend:
             with open(self._results) as f:
                 data = json.load(f)
             self._model = pd.json_normalize(data["output"])
+            self._raw = data["output"]
             self._info = data["metadata"]
             self._files = data["metadata"]["files"]
 
@@ -700,14 +705,13 @@ class Controller:
     
     def get_model(self):
         return self.model.model
+    
+    def get_raw(self):
+        return self.model.raw
 
     def apply_filter(self):
         # TODO: Return filtered model
         return self.model.model
-
-    def get_stat(self):
-        # TODO: Return stat of the model
-        pass
 
     def toggle_image(self):
         # TODO: Toggle image in the JSON file
@@ -717,8 +721,17 @@ class Controller:
         # TODO: Save image remark in the JSON file
         pass
 
-    def read_info(self):
+    def get_info(self):
         return self.model.info
+    
+    def get_stat(self):
+        # TODO: Return stat of the model
+        # stat = self.model.model.agg(
+        #     "uuid": ["count"],
+
+        # )
+        # return stat
+        pass
 
     # Plots for data model overview
     # TODO: Build plots
