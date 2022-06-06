@@ -241,19 +241,6 @@ class Sidebar(ttk.Frame):
         )
         self.menu.pack(padx=PADDING, pady=PADDING)
 
-        # self.attr_0 = ttk.LabelFrame(
-        #     self.menu,
-        #     text='Detection',
-        # )
-        # self.attr_0.pack(padx=PADDING, pady=PADDING)
-        # ttk.Label(self.attr_0, text='Confidence Level', padding=5).pack()
-        # ttk.Spinbox(
-        #     self.attr_0,
-        #     from_=0.0,
-        #     to=1.0,
-        #     textvariable=self.confidence_var
-        # ).pack()
-
         self.attr_1 = ttk.LabelFrame(
             self.menu,
             text='Face',
@@ -629,26 +616,150 @@ class Task(tk.Toplevel):
         self.geometry(f'{CANVAS}x{CANVAS}+{center_x}+{center_y}')
 
         self.confidence = tk.DoubleVar(value=0.7)
-        self.face = tk.BooleanVar(value=True)
         self.gender = tk.BooleanVar(value=True)
         self.ethnicity = tk.BooleanVar(value=True)
         self.emotion = tk.BooleanVar(value=True)
         self.age = tk.BooleanVar(value=True)
+        self.pose = tk.BooleanVar(value=True)
         self.quality = tk.BooleanVar(value=True)
+
+        self.folder = tk.StringVar(value="assets/data/")
 
         # Create widget
         self._setup_app()
 
     def _setup_app(self):
+        self.io = ttk.LabelFrame(
+            self,
+            text='Image Folder',
+        )
+        self.io.pack(padx=PADDING, pady=PADDING, fill='x')
+        ttk.Entry(self.io,
+            textvariable=self.folder
+            ).pack(padx=PADDING, pady=PADDING)
+        ttk.Button(
+            self.io,
+            text='Select Image Folder',
+            command=self._select_folder
+        ).pack(padx=PADDING, pady=PADDING)
+
+        self.flags = ttk.Frame(self)
+        self.flags.pack()
+        self.flag_1 = ttk.LabelFrame(
+            self.flags,
+            text='Face Detection'
+        )
+        self.flag_1.pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Label(
+            self.flag_1,
+            text='Confidence Level:',
+            padding=PADDING).pack()
+        ttk.Spinbox(
+            self.flag_1,
+            from_=0.0,
+            to=1.0,
+            textvariable=self.confidence
+        ).pack()
+        ttk.Label(
+            self.flag_1,
+            text='Face Attributes:',
+            padding=PADDING).pack()
+        ttk.Label(
+            self.flag_1,
+            text='Age',
+            padding=PADDING).pack()
+        ttk.Checkbutton(
+            self.flag_1,
+            onvalue=True,
+            offvalue=False,
+            variable=self.age
+        ).pack()
+        ttk.Label(
+            self.flag_1,
+            text='Gender',
+            padding=PADDING).pack()
+        ttk.Checkbutton(
+            self.flag_1,
+            onvalue=True,
+            offvalue=False,
+            variable=self.gender
+        ).pack()
+        ttk.Label(
+            self.flag_1,
+            text='Ethnicity',
+            padding=PADDING).pack()
+        ttk.Checkbutton(
+            self.flag_1,
+            onvalue=True,
+            offvalue=False,
+            variable=self.ethnicity
+        ).pack()
+        ttk.Label(
+            self.flag_1,
+            text='Emotion',
+            padding=PADDING).pack()
+        ttk.Checkbutton(
+            self.flag_1,
+            onvalue=True,
+            offvalue=False,
+            variable=self.emotion
+        ).pack()
+
+        self.flag_2 = ttk.LabelFrame(
+            self.flags,
+            text='Head Pose',
+        )
+        self.flag_2.pack(padx=PADDING, pady=PADDING, side='top')
+        ttk.Checkbutton(
+            self.flag_2,
+            onvalue=True,
+            offvalue=False,
+            variable=self.pose
+        ).pack()
+
+        self.flag_3 = ttk.LabelFrame(
+            self.flags,
+            text='Image Quality',
+        )
+        self.flag_3.pack(padx=PADDING, pady=PADDING, side='top')
+        ttk.Checkbutton(
+            self.flag_3,
+            onvalue=True,
+            offvalue=False,
+            variable=self.quality
+        ).pack()
+
         ttk.Button(
             self,
             text='Run',
             style='Accent.TButton',
             command=self._run
         ).pack(padx=PADDING, pady=PADDING)
+    
+    def _select_folder(self):
+        filepath = fd.askdirectory(
+            title='Open image folder',
+            initialdir='./'
+        )
+        if filepath:
+            showinfo(
+                title='Selected',
+                message=f'Open {filepath}'
+            )
+            self.folder.set(filepath)
 
     def _run(self):
-        self.flag = {'a': 'a'}
+        self.flag = {
+            'folder': self.folder.get(),
+            'confidence': self.confidence.get(),
+            'age': self.age.get(),
+            'gender': self.gender.get(),
+            'ethnicity': self.ethnicity.get(),
+            'emotion': self.emotion.get(),
+            'pose': self.pose.get(),
+            'quality': self.quality.get()
+        }
+
         answer = askokcancel(
             title='Confirmation',
             message='Start new task?',
@@ -706,8 +817,8 @@ class Backend:
 
     def run(self, **flag) -> None:
         # TODO: Run new task
+        print(flag)
         # self._model = util.run(flag)
-        print("run!")
 
     def save(self, path, model) -> None:
         # TODO: Save new results
@@ -751,7 +862,6 @@ class Controller:
         self.roll = self.view.sidebar.pose_roll.get()
         self.age = self.view.sidebar.age_var.get()
         self.quality = self.view.sidebar.image_quality_var.get()
-        # self.confidence = self.view.sidebar.confidence_var.get()
 
         self.gender = self.view.sidebar.gender_var.get()
         self.ethnicity = self.view.sidebar.ethnicity_var.get()
