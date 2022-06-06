@@ -8,7 +8,7 @@ import tkinter as tk
 from platform import system
 from tkinter import filedialog as fd
 from tkinter import ttk
-from tkinter.messagebox import WARNING, askokcancel, showinfo
+from tkinter.messagebox import INFO, WARNING, askokcancel, showinfo
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -66,7 +66,6 @@ class DataCanvas(tk.Tk):
     def _setup_app(self):
         # Setup Model
         self.model = Backend()
-        self.model.results = 'assets/test.json'
 
         # Setup View
         self.view = Page(self)
@@ -80,9 +79,9 @@ class Page(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
+        self.parent = parent
         self.controller = None
         self.results = None
-        self.selected = False
         self.canvas_plot = tk.Canvas()
     
         # Create widget
@@ -97,7 +96,7 @@ class Page(ttk.Frame):
         self.overview = ttk.Frame(self.notebook)
         self.label = ttk.Labelframe(self.overview, text="Main")
         self.label.pack(padx=PADDING, pady=PADDING, side='left', fill='y')
-        self.sidebar = Sidebar(self.label)
+        self.sidebar = Sidebar(self.label, self)
         self.sidebar.pack(padx=PADDING, pady=PADDING, side='left', fill='y')
         self.plot_frame = Plot(self.label)
         self.plot_frame.pack(padx=PADDING, pady=PADDING, side='top')
@@ -117,12 +116,7 @@ class Page(ttk.Frame):
         self.notebook.add(self.inspector, text="Inspector")
     
     def get_results(self):
-        if self.sidebar.path:
-            self.results = self.sidebar.path
-            self.selected = True
-        else:
-            self.results = self.controller.get_results()
-        
+        self.results = self.sidebar.path.get()
         self._update_content()
 
     def set_controller(self, Controller):
@@ -169,13 +163,17 @@ class Page(ttk.Frame):
         toolbar.update()
 
         self.canvas_plot.get_tk_widget().pack(expand=True)
+    
+    def show_message(self, content):
+        showinfo(
+            title='Message',
+            message=content
+        )
 
 
 class Sidebar(ttk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, widget):
         super().__init__(parent)
-
-        self.path = None
         
         # Create option list
         self.face_gender_options = ['Man', 'Woman', 'All']
@@ -215,6 +213,9 @@ class Sidebar(ttk.Frame):
         self.confidence_var = tk.DoubleVar(value=80.0)
 
         self.separator = {'fill': 'x'}
+        self.parent = widget
+
+        self.path = tk.StringVar(value='assets/out/test.json')
 
         self._setup_widgets()
 
@@ -224,9 +225,13 @@ class Sidebar(ttk.Frame):
             text='Files',
         )
         self.io.pack(padx=PADDING, pady=PADDING, fill='x')
+        ttk.Entry(self.io,
+            textvariable=self.path
+            ).pack(padx=PADDING, pady=PADDING)
         ttk.Button(
             self.io,
-            text='Open output JSON file',
+            text='Open JSON file',
+            style='Accent.TButton',
             command=self._select_file
         ).pack(padx=PADDING, pady=PADDING)
 
@@ -236,18 +241,18 @@ class Sidebar(ttk.Frame):
         )
         self.menu.pack(padx=PADDING, pady=PADDING)
 
-        self.attr_0 = ttk.LabelFrame(
-            self.menu,
-            text='Detection',
-        )
-        self.attr_0.pack(padx=PADDING, pady=PADDING)
-        ttk.Label(self.attr_0, text='Confidence Level', padding=5).pack()
-        ttk.Spinbox(
-            self.attr_0,
-            from_=0.0,
-            to=1.0,
-            textvariable=self.confidence_var
-        ).pack()
+        # self.attr_0 = ttk.LabelFrame(
+        #     self.menu,
+        #     text='Detection',
+        # )
+        # self.attr_0.pack(padx=PADDING, pady=PADDING)
+        # ttk.Label(self.attr_0, text='Confidence Level', padding=5).pack()
+        # ttk.Spinbox(
+        #     self.attr_0,
+        #     from_=0.0,
+        #     to=1.0,
+        #     textvariable=self.confidence_var
+        # ).pack()
 
         self.attr_1 = ttk.LabelFrame(
             self.menu,
@@ -327,6 +332,16 @@ class Sidebar(ttk.Frame):
             to=0,
             textvariable=self.image_quality_var
         ).pack()
+
+        ttk.Button(
+            self.menu,
+            text='Apply',
+            style='Accent.TButton',
+            command=self._get_results
+        ).pack(padx=PADDING, pady=PADDING)
+    
+    def _get_results(self):
+        self.parent.get_results()
     
     def _select_file(self):
         filetypes = (
@@ -345,7 +360,7 @@ class Sidebar(ttk.Frame):
                 title='Selected',
                 message=f'Open {filepath}'
             )
-            self.path = filepath
+            self.path.set(filepath)
 
 
 class Statusbar(ttk.Frame):
@@ -359,9 +374,9 @@ class Statusbar(ttk.Frame):
     def _setup_widgets(self):
         ttk.Button(
             self,
-            text='Apply Filter',
+            text='New Task',
             style='Accent.TButton',
-            command=self._get_result
+            command=self._new_task
         ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self,
@@ -409,8 +424,8 @@ class Statusbar(ttk.Frame):
     def _save(self):
         self.parent.controller.save()
     
-    def _get_result(self):
-        self.parent.get_results()
+    def _new_task(self):
+        self.parent.controller.new_task()
     
     def _change_theme(self):
         if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
@@ -475,7 +490,6 @@ class Inspector(ttk.Frame):
         self.task = ttk.Frame(self)
         self.task.pack(side='bottom')
 
-        # ttk.Separator(self, orient='horizontal').pack(fill='x', side='bottom')
         self.annotation = ttk.Label(self,
             text='',
             padding=(PADDING, PADDING))
@@ -594,6 +608,57 @@ class Shell(ttk.Frame):
             )
 
 
+class Task(tk.Toplevel):
+    def __init__(self, parent, widget):
+        super().__init__(parent)
+
+        self.parent = widget
+        self.flag = None
+
+        self.title('New Task')
+        self.resizable(False, False)
+
+        # self.tk.call("source", "assets/theme/sun-valley.tcl")
+        # self.tk.call("set_theme", "light")
+
+        # Calculates location of screen centre to put the gui window.
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        center_x = int(screen_width/2 - CANVAS/2)
+        center_y = int(screen_height/2 - CANVAS/2)
+        self.geometry(f'{CANVAS}x{CANVAS}+{center_x}+{center_y}')
+
+        self.confidence = tk.DoubleVar(value=0.7)
+        self.face = tk.BooleanVar(value=True)
+        self.gender = tk.BooleanVar(value=True)
+        self.ethnicity = tk.BooleanVar(value=True)
+        self.emotion = tk.BooleanVar(value=True)
+        self.age = tk.BooleanVar(value=True)
+        self.quality = tk.BooleanVar(value=True)
+
+        # Create widget
+        self._setup_app()
+
+    def _setup_app(self):
+        ttk.Button(
+            self,
+            text='Run',
+            style='Accent.TButton',
+            command=self._run
+        ).pack(padx=PADDING, pady=PADDING)
+
+    def _run(self):
+        self.flag = {'a': 'a'}
+        answer = askokcancel(
+            title='Confirmation',
+            message='Start new task?',
+            icon=INFO
+        )
+        if answer:
+            self.parent.run(**self.flag)
+            self.destroy()
+
+
 class Backend:
     def __init__(self) -> None:
         self._model = None
@@ -640,9 +705,12 @@ class Backend:
             self._files = data["metadata"]["files"]
 
     def run(self, **flag) -> None:
-        self._model = util.run(flag)
+        # TODO: Run new task
+        # self._model = util.run(flag)
+        print("run!")
 
     def save(self, path, model) -> None:
+        # TODO: Save new results
         util.save(path, model)
         msg = f"Result saved at {path}"
         return msg
@@ -652,6 +720,7 @@ class Controller:
     def __init__(self, model, view) -> None:
         self.model = model
         self.view = view
+        self.task = None
 
         # Filter threshold
         self.yaw = None
@@ -663,11 +732,9 @@ class Controller:
         self.age = None
         self.quality = None
         self.confidence = None
-
-        self.load()
     
     def run(self, **flag) -> None:
-        self.view.run(flag)
+        self.model.run(**flag)
     
     def load(self) -> None:
         try:
@@ -676,22 +743,28 @@ class Controller:
             self.view.show_message(error)
     
     def update(self) -> None:
-        if self.view.selected:
-            self.model.path = self.view.results
-            self.load()
+        self.model.results = self.view.results
+        self.load()
         
         self.yaw = self.view.sidebar.pose_yaw.get()
         self.pitch = self.view.sidebar.pose_pitch.get()
         self.roll = self.view.sidebar.pose_roll.get()
         self.age = self.view.sidebar.age_var.get()
         self.quality = self.view.sidebar.image_quality_var.get()
-        self.confidence = self.view.sidebar.confidence_var.get()
+        # self.confidence = self.view.sidebar.confidence_var.get()
 
         self.gender = self.view.sidebar.gender_var.get()
         self.ethnicity = self.view.sidebar.ethnicity_var.get()
         self.emotion = self.view.sidebar.emotion_var.get()
 
         self.apply_filter()
+    
+    def apply_filter(self):
+        # TODO: Return filtered model
+        return self.model.model
+    
+    def new_task(self):
+        self.task = Task(self.view.parent, self)
     
     def save(self, file) -> None:
         """Save results."""
@@ -713,10 +786,6 @@ class Controller:
     
     def get_raw(self):
         return self.model.raw
-
-    def apply_filter(self):
-        # TODO: Return filtered model
-        return self.model.model
 
     def toggle_image(self):
         # TODO: Toggle image in the JSON file
