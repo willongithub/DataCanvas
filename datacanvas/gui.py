@@ -22,10 +22,10 @@ import datacanvas.utils as util
 
 WIDTH = 1280
 HEIGHT = 800
-SIDEBAR = 200
+SIDEBAR = 100
 SHELL = 400
 PADDING = 5
-CANVAS = 700
+CANVAS = 500
 
 TYPE = ('.jpg', '.jpeg','.png')
 
@@ -90,20 +90,36 @@ class Page(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        Statusbar(self).pack(padx=PADDING, fill='x', side='bottom')
+        Statusbar(self).pack(padx=PADDING, pady=PADDING, fill='x', side='bottom')
         self.notebook = ttk.Notebook(self)
-        self.notebook.pack(padx=PADDING, pady=PADDING)
+        self.notebook.pack()
 
-        # Tabs
-        self.overview = Tab(self, "overview")
-        self.inspector = Tab(self, "inspector")
+        # Overview Tab
+        self.overview = ttk.Frame(self.notebook)
+        self.label = ttk.Labelframe(self.overview, text="Main")
+        self.label.pack(padx=PADDING, pady=PADDING, side='left', fill='y')
+        self.sidebar = Sidebar(self.label)
+        self.sidebar.pack(padx=PADDING, pady=PADDING, side='left', fill='y')
+        self.plot_frame = Plot(self.label)
+        self.plot_frame.pack(padx=PADDING, pady=PADDING, side='top')
+        self.plot_shell = Shell(self.overview)
+        self.plot_shell.pack(side='left')
+
+        # Image inspector tab
+        self.inspector = ttk.Frame(self.notebook)
+        self.label = ttk.Labelframe(self.inspector, text="Main")
+        self.label.pack(padx=PADDING, pady=PADDING, side='left', fill='y')
+        self.image_frame = Inspector(self.label, self)
+        self.image_frame.pack(padx=PADDING, pady=PADDING, side='bottom')
+        self.image_shell = Shell(self.inspector)
+        self.image_shell.pack(side='left')
         
         self.notebook.add(self.overview, text="Overview")
         self.notebook.add(self.inspector, text="Inspector")
     
     def get_results(self):
-        if self.overview.sidebar.path:
-            self.results = self.overview.sidebar.path
+        if self.sidebar.path:
+            self.results = self.sidebar.path
             self.selected = True
         else:
             self.results = self.controller.get_results()
@@ -121,23 +137,23 @@ class Page(ttk.Frame):
         # Update shell area
         info = self.controller.read_info()
         for item in info.items():
-            self.overview.shell.insert(item)
+            self.plot_shell.insert(item)
 
         # Update plots area
         plot_1 = self.controller.get_hist('faces.gender')
-        widget_1 = self.overview.mainframe.fig_1
+        widget_1 = self.plot_frame.fig_1
         self._render_plot(widget_1, plot_1)
 
         plot_2 = self.controller.get_hist('faces.dominant_emotion')
-        widget_2 = self.overview.mainframe.fig_2
+        widget_2 = self.plot_frame.fig_2
         self._render_plot(widget_2, plot_2)
 
         plot_3 = self.controller.get_hist('faces.dominant_race')
-        widget_3 = self.overview.mainframe.fig_3
+        widget_3 = self.plot_frame.fig_3
         self._render_plot(widget_3, plot_3)
 
         # Update image inspector area
-        self.inspector.mainframe.update_meta_list()
+        self.image_frame.update_meta_list()
 
     def _render_plot(self, widget, plot):
         if self.canvas_plot:
@@ -150,36 +166,6 @@ class Page(ttk.Frame):
         toolbar.update()
 
         self.canvas_plot.get_tk_widget().pack(expand=True)
-
-
-class Tab(ttk.Frame):
-    # TODO: Refactor so that content objects passed from parent
-    def __init__(self, parent, content):
-        super().__init__(parent)
-        
-        self.parent = parent
-
-        # Create widget
-        self._setup_widgets(content)
-
-    def _setup_widgets(self, content):      
-        # Child widget
-        if content == "overview":
-            self.label = ttk.Labelframe(self, text="Main")
-            self.label.pack(padx=PADDING, pady=PADDING, side='left')
-            self.sidebar = Sidebar(self.label)
-            self.sidebar.pack(padx=PADDING, pady=PADDING, side='left', fill='y')
-            self.mainframe = Plot(self.label)
-            self.mainframe.pack(padx=PADDING, pady=PADDING, side='bottom')
-            self.shell = Shell(self)
-            self.shell.pack(side='left')
-        if content == "inspector":
-            self.label = ttk.Labelframe(self, text="Main")
-            self.label.pack(padx=PADDING, pady=PADDING, side='left')
-            self.mainframe = Inspector(self.label, self)
-            self.mainframe.pack(padx=PADDING, pady=PADDING, side='bottom')
-            self.shell = Shell(self)
-            self.shell.pack(side='left')
 
 
 class Sidebar(ttk.Frame):
@@ -377,6 +363,7 @@ class Statusbar(ttk.Frame):
         ttk.Button(
             self,
             text='EXIT',
+            style='Accent.TButton',
             command=self._exit
         ).pack(padx=PADDING, pady=PADDING, side='right')
         ttk.Button(
@@ -388,7 +375,12 @@ class Statusbar(ttk.Frame):
         #     self,
         #     text='Clear',
         #     command=self._clear_shell
-        # ).pack(padx=PADDING, pady=PADDING, side='left')
+        # ).pack(padx=PADDING, pady=PADDING, side='right')
+        ttk.Button(
+            self,
+            text='Save',
+            command=self._save
+        ).pack(padx=PADDING, pady=PADDING, side='right')
         
         # TODO: Implement pregressbar with async
         self.progress = ttk.Progressbar(
@@ -400,7 +392,8 @@ class Statusbar(ttk.Frame):
     
     def _process(self, flag):
         if flag == 'start':
-            ttk.Separator(self, orient='vertical').pack(fill='y', side='left')
+            ttk.Separator(self,
+            orient='vertical').pack(padx=PADDING, fill='y', side='left')
             self.progress.pack(padx=PADDING, pady=PADDING, side='left')
             self.progress.start
         if flag == 'end':
@@ -410,20 +403,24 @@ class Statusbar(ttk.Frame):
     def _clear_shell(self):
         self.parent.shell.clear()
     
+    def _save(self):
+        self.parent.controller.save()
+    
     def _get_result(self):
         self.parent.get_results()
     
     def _change_theme(self):
         if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
             self.tk.call("set_theme", "light")
-            self.parent.overview.shell.shell.config(bg='gray90', fg='black')
-            self.parent.inspector.shell.shell.config(bg='gray90', fg='black')
+            self.parent.image_shell.shell.config(bg='gray90', fg='black')
+            self.parent.image_shell.shell.config(bg='gray90', fg='black')
         else:
             self.tk.call("set_theme", "dark")
-            self.parent.overview.shell.shell.config(bg='gray20', fg='lime green')
-            self.parent.inspector.shell.shell.config(bg='gray20', fg='lime green')
+            self.parent.plot_shell.shell.config(bg='gray20', fg='lime green')
+            self.parent.plot_shell.shell.config(bg='gray20', fg='lime green')
     
     def _exit(self):
+        # TODO: Check fale save flag
         answer = askokcancel(
             title='Confirmation',
             message='Are you sure?',
@@ -445,7 +442,7 @@ class Plot(ttk.Frame):
             width=WIDTH-SHELL-SIDEBAR,
             height=HEIGHT
         )
-        self.canvas.pack(padx=PADDING, pady=PADDING, side='left')
+        self.canvas.pack(padx=PADDING, side='left')
 
         # One plot for each tab
         self.fig_1 = ttk.Frame(self.canvas)
@@ -465,9 +462,9 @@ class Inspector(ttk.Frame):
         
         self.parent = tab
         self.meta_list = None
-        self.remark = tk.StringVar(value='Enter remarks here')
+        self.remark = tk.StringVar(value='Enter comment here')
         self.img_pointer = -1
-        self.MAX_SIZE = (CANVAS - PADDING, CANVAS - PADDING)
+        self.MAX_SIZE = (CANVAS - PADDING, CANVAS + SHELL - PADDING)
 
         self._setup_widgets()
 
@@ -475,10 +472,13 @@ class Inspector(ttk.Frame):
         self.task = ttk.Frame(self)
         self.task.pack(side='bottom')
 
-        self.annotation = ttk.Label(self, text='')
+        # ttk.Separator(self, orient='horizontal').pack(fill='x', side='bottom')
+        self.annotation = ttk.Label(self,
+            text='',
+            padding=(PADDING, PADDING))
         self.annotation.pack(side='bottom')
         
-        self.canvas = tk.Canvas(self, height=CANVAS, width=CANVAS)
+        self.canvas = tk.Canvas(self, height=CANVAS, width=CANVAS+SHELL)
         self.canvas.pack(padx=PADDING, pady=PADDING)
         
         ttk.Button(
@@ -494,6 +494,11 @@ class Inspector(ttk.Frame):
             self.task,
             command=lambda : self.display_image(1),
             text="Next"
+            ).pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Button(
+            self.task,
+            command=lambda : self.show_mask(self.remark.get()),
+            text="Mask"
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self.task,
@@ -519,20 +524,24 @@ class Inspector(ttk.Frame):
             return
         self.img = Image.open(self.file)
         self.annotation.config(
-            text = f"File: {self.file}  |  Size: {self.img.size}")
+            text = f"File: {self.file}  |  Resolution: {self.img.size}")
         self.img = ImageTk.PhotoImage(ImageOps.pad(self.img, self.MAX_SIZE))
         self.canvas.create_image(
-            CANVAS/2, CANVAS/2,
+            (CANVAS+SHELL)/2, CANVAS/2,
             image=self.img)
         self.display_meta(self.meta_list.loc[self.img_pointer])
     
     def update_meta_list(self):
-        self.meta_list = self.parent.parent.controller.get_model()
+        self.meta_list = self.parent.controller.get_model()
         self.display_image(1)
 
     def display_meta(self, meta):
-        self.parent.shell.shell.delete('1.0', tk.END)
-        self.parent.shell.insert(meta)
+        self.parent.image_shell.shell.delete('1.0', tk.END)
+        self.parent.image_shell.insert(meta)
+
+    def show_mask(self):
+        # TODO: show detection mask
+        pass
 
     def save_remark(self, remark):
         self.parent.parent.controller.save_remark(remark)
@@ -661,16 +670,16 @@ class Controller:
             self.model.path = self.view.results
             self.load()
         
-        self.yaw = self.view.overview.sidebar.pose_yaw.get()
-        self.pitch = self.view.overview.sidebar.pose_pitch.get()
-        self.roll = self.view.overview.sidebar.pose_roll.get()
-        self.age = self.view.overview.sidebar.age_var.get()
-        self.quality = self.view.overview.sidebar.image_quality_var.get()
-        self.confidence = self.view.overview.sidebar.confidence_var.get()
+        self.yaw = self.view.sidebar.pose_yaw.get()
+        self.pitch = self.view.sidebar.pose_pitch.get()
+        self.roll = self.view.sidebar.pose_roll.get()
+        self.age = self.view.sidebar.age_var.get()
+        self.quality = self.view.sidebar.image_quality_var.get()
+        self.confidence = self.view.sidebar.confidence_var.get()
 
-        self.gender = self.view.overview.sidebar.gender_var.get()
-        self.ethnicity = self.view.overview.sidebar.ethnicity_var.get()
-        self.emotion = self.view.overview.sidebar.emotion_var.get()
+        self.gender = self.view.sidebar.gender_var.get()
+        self.ethnicity = self.view.sidebar.ethnicity_var.get()
+        self.emotion = self.view.sidebar.emotion_var.get()
 
         self.apply_filter()
     
