@@ -522,7 +522,7 @@ class Inspector(ttk.Frame):
             self.img_pointer += offset
             if self.img_pointer < 0:
                 self.img_pointer = 0
-            self.file = self.meta_list.loc[self.img_pointer]['file']
+            self.file = self.meta_list.iloc[self.img_pointer]['file']
         except ValueError:
             showinfo(
                 title='Note',
@@ -541,7 +541,8 @@ class Inspector(ttk.Frame):
     
     def update_meta_list(self):
         self.meta_list = self.parent.controller.get_model()
-        self.display_image(1)
+        if self.meta_list.shape[0] > 0:
+            self.display_image(1)
 
     def display_meta(self, pointer):
         self.parent.image_shell.shell.delete('1.0', tk.END)
@@ -868,7 +869,6 @@ class Controller:
         self.apply_filter()
     
     def apply_filter(self):
-        # TODO: Return filtered model
         self.quality = self.view.sidebar.image_quality_var.get()
 
         self.age = self.view.sidebar.age_var.get()
