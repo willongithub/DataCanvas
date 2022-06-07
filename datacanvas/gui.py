@@ -128,10 +128,11 @@ class Page(ttk.Frame):
         self.controller.update()
 
         # Update shell area
+        self.plot_shell.shell.delete('1.0', tk.END)
         self.plot_shell.insert("### Dataset Info ###")
         info = self.controller.get_info()
         self.plot_shell.insert(json.dumps(info, indent=4))
-        self.plot_shell.insert("### Simple Stat ###")
+        self.plot_shell.insert("### Filter Stat ###")
         stat = self.controller.get_stat()
         for item in stat:
             self.plot_shell.insert(item)
@@ -200,17 +201,17 @@ class Sidebar(ttk.Frame):
         # Create option variables
         self.face_mask = tk.BooleanVar(value=True)
         
-        self.pose_yaw = tk.DoubleVar(value=90)
-        self.pose_pitch = tk.DoubleVar(value=90)
-        self.pose_roll = tk.DoubleVar(value=90)
+        self.pose_yaw = tk.IntVar(value=90)
+        self.pose_pitch = tk.IntVar(value=90)
+        self.pose_roll = tk.IntVar(value=90)
 
         self.gender_var = tk.StringVar()
         self.emotion_var = tk.StringVar()
         self.ethnicity_var = tk.StringVar()
         self.age_var = tk.IntVar(value=999)
 
-        self.image_quality_var = tk.DoubleVar(value=100)
-        self.confidence_var = tk.DoubleVar(value=80.0)
+        self.image_quality_var = tk.IntVar(value=100)
+        self.confidence_var = tk.IntVar(value=80)
 
         self.separator = {'fill': 'x'}
         self.parent = widget
@@ -258,7 +259,7 @@ class Sidebar(ttk.Frame):
         ttk.OptionMenu(
             self.attr_1,
             self.gender_var,
-            self.face_gender_options[-1],
+            self.face_gender_options[1],
             *self.face_gender_options,
         ).pack()
         ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
@@ -266,7 +267,7 @@ class Sidebar(ttk.Frame):
         ttk.OptionMenu(
             self.attr_1,
             self.ethnicity_var,
-            self.face_ethnicity_options[-1],
+            self.face_ethnicity_options[3],
             *self.face_ethnicity_options,
         ).pack()
         ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
@@ -274,7 +275,7 @@ class Sidebar(ttk.Frame):
         ttk.OptionMenu(
             self.attr_1,
             self.emotion_var,
-            self.face_emotion_options[-1],
+            self.face_emotion_options[-2],
             *self.face_emotion_options,
         ).pack()
 
@@ -419,13 +420,16 @@ class Statusbar(ttk.Frame):
             self.tk.call("set_theme", "light")
             self.parent.plot_shell.shell.config(bg='gray90', fg='black')
             self.parent.image_shell.shell.config(bg='gray90', fg='black')
+            self.parent.controller.change_theme('light')
         else:
             self.tk.call("set_theme", "dark")
             self.parent.plot_shell.shell.config(bg='gray20', fg='lime green')
             self.parent.image_shell.shell.config(bg='gray20', fg='lime green')
+            self.parent.controller.change_theme('dark')
+        self.parent.get_results()
     
     def _exit(self):
-        # TODO: Check fale save flag
+        # TODO: Check file save flag
         answer = askokcancel(
             title='Confirmation',
             message='Are you sure?',
@@ -545,7 +549,7 @@ class Inspector(ttk.Frame):
         self.parent.image_shell.insert(json.dumps(meta, indent=4))
 
     def show_mask(self):
-        # TODO: show detection mask
+        # TODO: Show detection mask
         pass
 
     def save_remark(self, remark):
@@ -805,6 +809,10 @@ class Backend:
     @results.setter
     def results(self, path) -> None:
         self._results = path
+    
+    @model.setter
+    def model(self, model) -> None:
+        self._model = model
 
     def load_results(self) -> None:
         if os.path.exists(self._results):
@@ -816,12 +824,11 @@ class Backend:
             self._files = data["metadata"]["files"]
 
     def run(self, **flag) -> None:
-        # TODO: Run new task
-        print(flag)
+        # TODO: Link task runner
+        pass
         # self._model = util.run(flag)
 
     def save(self, path, model) -> None:
-        # TODO: Save new results
         util.save(path, model)
         msg = f"Result saved at {path}"
         return msg
@@ -832,6 +839,7 @@ class Controller:
         self.model = model
         self.view = view
         self.task = None
+        self.meta = None
 
         # Filter threshold
         self.yaw = None
@@ -856,22 +864,37 @@ class Controller:
     def update(self) -> None:
         self.model.results = self.view.results
         self.load()
-        
-        self.yaw = self.view.sidebar.pose_yaw.get()
-        self.pitch = self.view.sidebar.pose_pitch.get()
-        self.roll = self.view.sidebar.pose_roll.get()
-        self.age = self.view.sidebar.age_var.get()
-        self.quality = self.view.sidebar.image_quality_var.get()
-
-        self.gender = self.view.sidebar.gender_var.get()
-        self.ethnicity = self.view.sidebar.ethnicity_var.get()
-        self.emotion = self.view.sidebar.emotion_var.get()
 
         self.apply_filter()
     
     def apply_filter(self):
         # TODO: Return filtered model
-        return self.model.model
+        self.quality = self.view.sidebar.image_quality_var.get()
+
+        self.age = self.view.sidebar.age_var.get()
+        self.gender = [self.view.sidebar.gender_var.get()]
+        self.ethnicity = [self.view.sidebar.ethnicity_var.get()]
+        self.emotion = [self.view.sidebar.emotion_var.get()]
+
+        self.yaw = self.view.sidebar.pose_yaw.get()
+        self.pitch = self.view.sidebar.pose_pitch.get()
+        self.roll = self.view.sidebar.pose_roll.get()
+
+        df = self.model.model
+        self.model.model = df[
+            (df['quality'] < self.quality) &
+            (df['faces.age'] < self.age) &
+            (df['faces.gender'].isin(self.gender)) &
+            (df['faces.dominant_race'].isin(self.ethnicity)) &
+            (df['faces.dominant_emotion'].isin(self.emotion)) &
+            (df['pose.yaw'] < self.yaw) &
+            (df['pose.pitch'] < self.pitch) &
+            (df['pose.roll'] < self.roll)
+        ]
+        self.meta = {
+            'folder': self.model.files,
+            'count': self.model.model.shape[0]
+        }
     
     def new_task(self):
         self.task = Task(self.view.parent, self)
@@ -897,33 +920,41 @@ class Controller:
     def get_raw(self):
         return self.model.raw
 
+    # TODO: Save new metadata to JSON file
     def toggle_image(self):
-        # TODO: Toggle image in the JSON file
         pass
 
     def save_remark(self, remark):
-        # TODO: Save image remark in the JSON file
         pass
 
     def get_info(self):
         return self.model.info
     
     def get_stat(self):
-        # TODO: Return stat of the model
-        file = int(self.model.model["file"].count())
-        age = int(self.model.model["faces.age"].mean())
-        gender = self.model.model["faces.gender"].value_counts(normalize=True).to_string()
-        ethnicity = self.model.model["faces.dominant_race"].value_counts(normalize=True).to_string()
-        emotion = self.model.model["faces.dominant_emotion"].value_counts(normalize=True).to_string()
-        stat = [
-            f"> File count:\n{file}",
-            f"> Average age:\n{age}",
-            f"> Gender:\n{gender}",
-            f"> Ethnicity:\n{ethnicity}",
-            f"> Emotion:\n{emotion}"
-        ]
+        try:
+            file = int(self.model.model["file"].count())
+            age = int(self.model.model["faces.age"].mean())
+            gender = self.model.model["faces.gender"].value_counts(normalize=True).to_string()
+            ethnicity = self.model.model["faces.dominant_race"].value_counts(normalize=True).to_string()
+            emotion = self.model.model["faces.dominant_emotion"].value_counts(normalize=True).to_string()
+            stat = [
+                f"> File count:\n{file}",
+                f"> Average age:\n{age}",
+                f"> Gender:\n{gender}",
+                f"> Ethnicity:\n{ethnicity}",
+                f"> Emotion:\n{emotion}"
+            ]
+        except:
+            file = int(self.model.model["file"].count())
+            stat = [f"> File count:\n{file}"]
         return stat
 
+    def change_theme(self, theme):
+        if theme == 'light':
+            plt.style.use("fivethirtyeight")
+        if theme == 'dark':
+            plt.style.use("dark_background")
+    
     # Plots for data model overview
     # TODO: Build plots
     def get_boxplot(self):
@@ -933,7 +964,7 @@ class Controller:
     def get_hist(self, attr):
         fig, ax = plt.subplots()
 
-        data = self.apply_filter()
+        data = self.get_model()
 
         sns.histplot(
             data,
