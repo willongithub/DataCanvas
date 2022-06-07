@@ -82,6 +82,7 @@ class Page(ttk.Frame):
         self.parent = parent
         self.controller = None
         self.results = None
+        self.modified = False
         self.canvas_plot = tk.Canvas()
 
         self.parent.bind('<Key>', self._key_listener)
@@ -127,6 +128,12 @@ class Page(ttk.Frame):
     def _key_listener(self, event):
         if event.keysym == 'Return':
             self.get_results()
+        if event.keysym == 't':
+            self.image_frame.toggle_image()
+        if event.keysym == 'r':
+            self.image_frame.remark_image()
+        if event.keysym == 'a':
+            self.image_frame.show_annotation()
         if event.keysym in ['Right', 'Down']:
             self.image_frame.display_image(1)
         if event.keysym in ['Left', 'Up']:
@@ -439,13 +446,17 @@ class Statusbar(ttk.Frame):
         self.parent.get_results()
     
     def _exit(self):
-        # TODO: Check file save flag
-        answer = askokcancel(
-            title='Confirmation',
-            message='Are you sure?',
-            icon=WARNING
-        )
-        if answer:
+        if self.parent.modified:
+            answer = askokcancel(
+                title='Confirmation',
+                message='Leave without saving?',
+                icon=WARNING
+            )
+            if answer:
+                exit()
+            else:
+                self.parent.controller.save()
+        else:
             exit()
 
 
@@ -513,7 +524,7 @@ class Inspector(ttk.Frame):
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self.task,
-            command=self.show_mask,
+            command=self.show_annotation,
             text="Annotation"
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
@@ -523,7 +534,7 @@ class Inspector(ttk.Frame):
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self.task,
-            command=self.save_remark,
+            command=self.remark_image,
             text="Remark"
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Entry(self.task,
@@ -566,9 +577,9 @@ class Inspector(ttk.Frame):
         # TODO: Show detection annotation
         pass
 
-    def save_remark(self):
+    def remark_image(self):
         self.parent.image_shell.insert(f"> Remark: {self.remark.get()}")
-        self.parent.controller.save_remark(
+        self.parent.controller.remark_image(
             self.img_pointer, self.remark.get())
 
     def toggle_image(self):
@@ -851,8 +862,15 @@ class Backend:
         pass
         # self._model = util.run(flag)
 
-    def save(self, path, model) -> None:
-        util.save(path, model)
+    def save(self, meta) -> None:
+        records = json.loads(self.model.to_json(orient="records"))
+        file = {
+            "metadata": meta,
+            "output": records
+        }
+        path = os.path.join(self.results, "out.json")
+        with open(path, "w") as f:
+            f.write(json.dumps(file, indent=4))
         msg = f"Result saved at {path}"
         return msg
 
@@ -861,7 +879,6 @@ class Controller:
     def __init__(self, model, view) -> None:
         self.model = model
         self.view = view
-        self.task = None
         self.meta = None
 
         # Filter threshold
@@ -917,18 +934,23 @@ class Controller:
             'folder': self.model.files,
             'count': self.model.model.shape[0]
         }
+        
+        self.view.modified = True
     
     def new_task(self):
-        self.task = Task(self.view.parent, self)
+        Task(self.view.parent, self)
     
-    def save(self, file) -> None:
+    def save(self) -> None:
         """Save results."""
-
-        try:
-            msg = self.model.save(file)
-            self.view.show_message(msg)
-        except Exception as error:
-            self.view.show_message(error)
+        path = self._select_folder()
+        if path:
+            self.model._results = path
+            try:               
+                msg = self.model.save(self.meta)
+                self.view.modified = False
+                self.view.show_message(msg)
+            except Exception as error:
+                self.view.show_message(error)
 
     def get_files(self):
         return self.model.files
@@ -948,7 +970,7 @@ class Controller:
             df['toggle'] = False
         df.iat[pointer, df.columns.get_loc("toggle")] = toggle
 
-    def save_remark(self, pointer, remark):
+    def remark_image(self, pointer, remark):
         df = self.model.model
         if 'remark' not in df.columns:
             df['remark'] = 'NA'
@@ -981,6 +1003,14 @@ class Controller:
             plt.style.use("fivethirtyeight")
         if theme == 'dark':
             plt.style.use("dark_background")
+    
+    def _select_folder(self):
+        filepath = fd.askdirectory(
+            title='Select save folder.',
+            initialdir='./'
+        )
+        if filepath:
+            return filepath
     
     # Plots for data model overview
     # TODO: Build plots
