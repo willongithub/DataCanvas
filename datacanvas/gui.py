@@ -83,6 +83,8 @@ class Page(ttk.Frame):
         self.controller = None
         self.results = None
         self.canvas_plot = tk.Canvas()
+
+        self.parent.bind('<Return>', self._return_listener)
     
         # Create widget
         self._setup_widgets()
@@ -121,6 +123,9 @@ class Page(ttk.Frame):
 
     def set_controller(self, Controller):
         self.controller = Controller
+    
+    def _return_listener(self, _):
+        self.get_results()
     
     # Update model shown.
     def _update_content(self):
@@ -606,6 +611,7 @@ class Task(tk.Toplevel):
 
         self.parent = widget
         self.flag = None
+        self.bind('<Return>', self._return_listener)
 
         self.title('New Task')
         self.resizable(False, False)
@@ -631,9 +637,9 @@ class Task(tk.Toplevel):
         self.folder = tk.StringVar(value="assets/data/")
 
         # Create widget
-        self._setup_app()
+        self._setup_window()
 
-    def _setup_app(self):
+    def _setup_window(self):
         self.io = ttk.LabelFrame(
             self,
             text='Image Folder',
@@ -741,6 +747,9 @@ class Task(tk.Toplevel):
             command=self._run
         ).pack(padx=PADDING, pady=PADDING)
     
+    def _return_listener(self, _):
+        self._run()
+
     def _select_folder(self):
         filepath = fd.askdirectory(
             title='Open image folder',
