@@ -241,6 +241,7 @@ class Sidebar(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
+        # TODO: Modify filter manu
         self.io = ttk.LabelFrame(
             self,
             text='Files',
@@ -409,7 +410,6 @@ class Statusbar(ttk.Frame):
             command=self._save
         ).pack(padx=PADDING, pady=PADDING, side='right')
         
-        # TODO: Implement pregressbar with async
         self.progress = ttk.Progressbar(
             self,
             orient='horizontal',
