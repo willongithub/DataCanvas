@@ -84,7 +84,7 @@ class Page(ttk.Frame):
         self.results = None
         self.canvas_plot = tk.Canvas()
 
-        self.parent.bind('<Return>', self._return_listener)
+        self.parent.bind('<Key>', self._key_listener)
     
         # Create widget
         self._setup_widgets()
@@ -124,8 +124,13 @@ class Page(ttk.Frame):
     def set_controller(self, Controller):
         self.controller = Controller
     
-    def _return_listener(self, _):
-        self.get_results()
+    def _key_listener(self, event):
+        if event.keysym == 'Return':
+            self.get_results()
+        if event.keysym in ['Right', 'Down']:
+            self.image_frame.display_image(1)
+        if event.keysym in ['Left', 'Up']:
+            self.image_frame.display_image(-1)
     
     # Update model shown.
     def _update_content(self):
@@ -476,8 +481,9 @@ class Inspector(ttk.Frame):
         
         self.parent = tab
         self.meta_list = None
-        self.remark = tk.StringVar(value='Enter comment here')
-        self.img_pointer = -1
+        self.toggle = False
+        self.remark = tk.StringVar(value='Enter remark here')
+        self.img_pointer = 0
         self.MAX_SIZE = (CANVAS - PADDING, CANVAS + SHELL - PADDING)
 
         self._setup_widgets()
@@ -496,33 +502,35 @@ class Inspector(ttk.Frame):
         
         ttk.Button(
             self.task,
-            command=self.toggle_image,
-            text="Delete"
-            ).pack(padx=PADDING, pady=PADDING, side='left')
-        ttk.Button(
-            self.task,
+            style='Accent.TButton',
             command=lambda : self.display_image(-1),
             text="Prev").pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self.task,
+            style='Accent.TButton',
             command=lambda : self.display_image(1),
             text="Next"
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self.task,
-            command=lambda : self.show_mask(self.remark.get()),
-            text="Mask"
+            command=self.show_mask,
+            text="Annotation"
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Button(
             self.task,
-            command=lambda : self.save_remark(self.remark.get()),
-            text="Comment"
+            command=self.toggle_image,
+            text="Toggle"
+            ).pack(padx=PADDING, pady=PADDING, side='left')
+        ttk.Button(
+            self.task,
+            command=self.save_remark,
+            text="Remark"
             ).pack(padx=PADDING, pady=PADDING, side='left')
         ttk.Entry(self.task,
             textvariable=self.remark
             ).pack(padx=PADDING, pady=PADDING, side='left')
 
-    def display_image(self, offset):
+    def display_image(self, offset=0):
         try:
             self.img_pointer += offset
             if self.img_pointer < 0:
@@ -547,22 +555,27 @@ class Inspector(ttk.Frame):
     def update_meta_list(self):
         self.meta_list = self.parent.controller.get_model()
         if self.meta_list.shape[0] > 0:
-            self.display_image(1)
+            self.display_image()
 
     def display_meta(self, pointer):
         self.parent.image_shell.shell.delete('1.0', tk.END)
         meta = self.parent.controller.get_raw()[pointer]
         self.parent.image_shell.insert(json.dumps(meta, indent=4))
 
-    def show_mask(self):
-        # TODO: Show detection mask
+    def show_annotation(self):
+        # TODO: Show detection annotation
         pass
 
-    def save_remark(self, remark):
-        self.parent.parent.controller.save_remark(remark)
+    def save_remark(self):
+        self.parent.image_shell.insert(f"> Remark: {self.remark.get()}")
+        self.parent.controller.save_remark(
+            self.img_pointer, self.remark.get())
 
     def toggle_image(self):
-        self.parent.parent.controller.toggle_image()
+        self.toggle = not self.toggle
+        self.parent.image_shell.insert(f"> Toggle: {self.toggle}")
+        self.parent.controller.toggle_image(
+            self.img_pointer, self.toggle)
 
 
 class Shell(ttk.Frame):
@@ -929,12 +942,17 @@ class Controller:
     def get_raw(self):
         return self.model.raw
 
-    # TODO: Save new metadata to JSON file
-    def toggle_image(self):
-        pass
+    def toggle_image(self, pointer, toggle):
+        df = self.model.model
+        if 'toggle' not in df.columns:
+            df['toggle'] = False
+        df.iat[pointer, df.columns.get_loc("toggle")] = toggle
 
-    def save_remark(self, remark):
-        pass
+    def save_remark(self, pointer, remark):
+        df = self.model.model
+        if 'remark' not in df.columns:
+            df['remark'] = 'NA'
+        df.iat[pointer, df.columns.get_loc("remark")] = remark
 
     def get_info(self):
         return self.model.info
