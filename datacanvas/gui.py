@@ -6,6 +6,7 @@ import json
 import os
 import tkinter as tk
 from platform import system
+from threading import Thread
 from tkinter import filedialog as fd
 from tkinter import ttk
 from tkinter.messagebox import INFO, WARNING, askokcancel, showinfo
@@ -84,6 +85,7 @@ class Page(ttk.Frame):
         self.results = None
         self.modified = False
         self.canvas_plot = tk.Canvas()
+        self.default = "out/task.json"
 
         self.parent.bind('<Key>', self._key_listener)
     
@@ -91,7 +93,8 @@ class Page(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        Statusbar(self).pack(padx=PADDING, pady=PADDING, fill='x', side='bottom')
+        self.status = Statusbar(self)
+        self.status.pack(padx=PADDING, pady=PADDING, fill='x', side='bottom')
         self.notebook = ttk.Notebook(self)
         self.notebook.pack()
 
@@ -373,6 +376,7 @@ class Statusbar(ttk.Frame):
         super().__init__(parent)
 
         self.parent = parent
+        self.flag = None
 
         self._setup_widgets()
 
@@ -412,16 +416,19 @@ class Statusbar(ttk.Frame):
             mode='indeterminate',
             length=SIDEBAR
         )
+        self.busy = ttk.Label(self, text="Busy...")
     
     def _process(self, flag):
         if flag == 'start':
             ttk.Separator(self,
             orient='vertical').pack(padx=PADDING, fill='y', side='left')
             self.progress.pack(padx=PADDING, pady=PADDING, side='left')
-            self.progress.start
+            self.busy.pack(padx=PADDING, pady=PADDING, side='left')
+            self.progress.start(1)
         if flag == 'end':
-            self.progress.stop
-            self.process.pack_forget()
+            self.progress.stop()
+            self.progress.pack_forget()
+            self.busy.pack_forget()
 
     def _clear_shell(self):
         self.parent.shell.clear()
@@ -431,6 +438,35 @@ class Statusbar(ttk.Frame):
     
     def _new_task(self):
         self.parent.controller.new_task()
+        
+    def start_task(self):
+        self.flag = self.parent.controller.task.flag
+        if self.flag:
+            task = AsyncProcess(self.flag)
+            task.start()
+            self._process('start')
+            self.monitor(task)
+        else:
+            showinfo(message="error!")
+    
+    def monitor(self, thread):
+        if thread.is_alive():
+            self.after(5000, lambda: self.monitor(thread))
+        else:
+            self._process('end')
+            answer = askokcancel(
+                title='Note',
+                message='Display new results?',
+                icon=INFO
+            )
+            if answer:
+                self.parent.sidebar.path.set(self.parent.default)
+                self.parent.get_results()
+            else:
+                showinfo(
+                    title="Info",
+                    message=f"Results saved at {self.parent.default}"
+                )
     
     def _change_theme(self):
         if self.tk.call("ttk::style", "theme", "use") == "sun-valley-dark":
@@ -804,8 +840,18 @@ class Task(tk.Toplevel):
             icon=INFO
         )
         if answer:
-            self.parent.run(**self.flag)
             self.destroy()
+            self.parent.view.status.start_task()
+
+
+class AsyncProcess(Thread):
+    def __init__(self, flag):
+        super().__init__()
+        self.flag = flag
+
+    def run(self) -> None:
+        # TODO: Link worker
+        showinfo(message=self.flag)
 
 
 class Backend:
@@ -857,11 +903,6 @@ class Backend:
             self._info = data["metadata"]
             self._files = data["metadata"]["files"]
 
-    def run(self, **flag) -> None:
-        # TODO: Link task runner
-        pass
-        # self._model = util.run(flag)
-
     def save(self, meta) -> None:
         records = json.loads(self.model.to_json(orient="records"))
         file = {
@@ -891,9 +932,6 @@ class Controller:
         self.age = None
         self.quality = None
         self.confidence = None
-    
-    def run(self, **flag) -> None:
-        self.model.run(**flag)
     
     def load(self) -> None:
         try:
@@ -938,7 +976,7 @@ class Controller:
         self.view.modified = True
     
     def new_task(self):
-        Task(self.view.parent, self)
+        self.task = Task(self.view.parent, self)
     
     def save(self) -> None:
         """Save results."""
