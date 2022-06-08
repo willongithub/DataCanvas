@@ -220,18 +220,35 @@ class Sidebar(ttk.Frame):
 
         # Create option variables
         self.face_mask = tk.BooleanVar(value=True)
+
+        self.age_lower = tk.IntVar(value=1)
+        self.age_upper = tk.IntVar(value=999)
+
+        self.gender_male = tk.BooleanVar(value=True)
+        self.gender_female = tk.BooleanVar(value=True)
+        self.emotion_angry = tk.BooleanVar(value=True)
+        self.emotion_disgust = tk.BooleanVar(value=True)
+        self.emotion_fear = tk.BooleanVar(value=True)
+        self.emotion_happy = tk.BooleanVar(value=True)
+        self.emotion_suprise = tk.BooleanVar(value=True)
+        self.emotion_sad = tk.BooleanVar(value=True)
+        self.emotion_neutral = tk.BooleanVar(value=True)
+        self.ethnicity_asian = tk.BooleanVar(value=True)
+        self.ethnicity_indian = tk.BooleanVar(value=True)
+        self.ethnicity_african = tk.BooleanVar(value=True)
+        self.ethnicity_caucasian = tk.BooleanVar(value=True)
+        self.ethnicity_arabian = tk.BooleanVar(value=True)
+        self.ethnicity_latino = tk.BooleanVar(value=True)
         
-        self.pose_yaw = tk.IntVar(value=90)
-        self.pose_pitch = tk.IntVar(value=90)
-        self.pose_roll = tk.IntVar(value=90)
+        self.pose_yaw_lower = tk.IntVar(value=-60)
+        self.pose_yaw_upper = tk.IntVar(value=60)
+        self.pose_pitch_lower = tk.IntVar(value=-60)
+        self.pose_pitch_upper = tk.IntVar(value=60)
+        self.pose_roll_lower = tk.IntVar(value=-60)
+        self.pose_roll_upper = tk.IntVar(value=60)
 
-        self.gender_var = tk.StringVar()
-        self.emotion_var = tk.StringVar()
-        self.ethnicity_var = tk.StringVar()
-        self.age_var = tk.IntVar(value=999)
-
-        self.image_quality_var = tk.IntVar(value=100)
-        self.confidence_var = tk.IntVar(value=80)
+        self.image_quality_lower = tk.IntVar(value=100)
+        self.image_quality_upper = tk.IntVar(value=0)
 
         self.separator = {'fill': 'x'}
         self.parent = widget
@@ -241,7 +258,6 @@ class Sidebar(ttk.Frame):
         self._setup_widgets()
 
     def _setup_widgets(self):
-        # TODO: Modify filter manu
         self.io = ttk.LabelFrame(
             self,
             text='Files',
@@ -268,79 +284,172 @@ class Sidebar(ttk.Frame):
             text='Face',
         )
         self.attr_1.pack(padx=PADDING, pady=PADDING)
-        ttk.Label(self.attr_1, text='Age', padding=5).pack()
-        ttk.Spinbox(
-            self.attr_1,
-            from_=1,
-            to=999,
-            textvariable=self.age_var
-        ).pack()
+        ttk.Label(self.attr_1, text='Age').pack()
+        self.filter_1 = ttk.Frame(self.attr_1)
+        self.filter_1.pack()
+        ttk.Entry(
+            self.filter_1,
+            textvariable=self.age_lower
+        ).pack(pady=PADDING, side='left')
+        ttk.Entry(
+            self.filter_1,
+            textvariable=self.age_upper
+        ).pack(pady=PADDING, side='left')
+
         ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
-        ttk.Label(self.attr_1, text='Gender', padding=5).pack()
-        ttk.OptionMenu(
-            self.attr_1,
-            self.gender_var,
-            self.face_gender_options[1],
-            *self.face_gender_options,
-        ).pack()
+        ttk.Label(self.attr_1, text='Gender').pack()
+        self.filter_2 = ttk.Frame(self.attr_1)
+        self.filter_2.pack()
+        ttk.Checkbutton(
+            self.filter_2,
+            text='Male',
+            variable=self.gender_male
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_2,
+            text='Female',
+            variable=self.gender_female
+        ).pack(side='left')
         ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
-        ttk.Label(self.attr_1, text='Ethnicity', padding=5).pack()
-        ttk.OptionMenu(
-            self.attr_1,
-            self.ethnicity_var,
-            self.face_ethnicity_options[3],
-            *self.face_ethnicity_options,
-        ).pack()
+
+        ttk.Label(self.attr_1, text='Ethnicity').pack()
+        self.filter_3_1 = ttk.Frame(self.attr_1)
+        self.filter_3_1.pack()
+        ttk.Checkbutton(
+            self.filter_3_1,
+            text='Latino',
+            variable=self.ethnicity_latino
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_3_1,
+            text='Arabian',
+            variable=self.ethnicity_arabian
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_3_1,
+            text='African',
+            variable=self.ethnicity_african
+        ).pack(side='left')
+        self.filter_3_2 = ttk.Frame(self.attr_1)
+        self.filter_3_2.pack()
+        ttk.Checkbutton(
+            self.filter_3_2,
+            text='Asian',
+            variable=self.ethnicity_asian
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_3_2,
+            text='Caucasian',
+            variable=self.ethnicity_caucasian
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_3_2,
+            text='Indian',
+            variable=self.ethnicity_indian
+        ).pack(side='left')
         ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
-        ttk.Label(self.attr_1, text='Emotion', padding=5).pack()
-        ttk.OptionMenu(
-            self.attr_1,
-            self.emotion_var,
-            self.face_emotion_options[-2],
-            *self.face_emotion_options,
-        ).pack()
+
+        ttk.Label(self.attr_1, text='Emotion').pack()
+        self.filter_4_1 = ttk.Frame(self.attr_1)
+        self.filter_4_1.pack()
+        ttk.Checkbutton(
+            self.filter_4_1,
+            text='Angry',
+            variable=self.emotion_angry
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_4_1,
+            text='Sad',
+            variable=self.emotion_sad
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_4_1,
+            text='Disgust',
+            variable=self.emotion_disgust
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_4_1,
+            text='Fear',
+            variable=self.emotion_fear
+        ).pack(side='left')
+        self.filter_4_2 = ttk.Frame(self.attr_1)
+        self.filter_4_2.pack()
+        ttk.Checkbutton(
+            self.filter_4_2,
+            text='Happy',
+            variable=self.emotion_happy
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_4_2,
+            text='Suprise',
+            variable=self.emotion_suprise
+        ).pack(side='left')
+        ttk.Checkbutton(
+            self.filter_4_2,
+            text='Neutral',
+            variable=self.emotion_neutral
+        ).pack(side='left')
+        ttk.Separator(self.attr_1, orient='horizontal').pack(**self.separator)
 
         self.attr_2 = ttk.LabelFrame(
             self.menu,
             text='Head',
         )
         self.attr_2.pack(padx=PADDING, pady=PADDING)
-        ttk.Label(self.attr_2, text='Yaw', padding=5).pack()
-        ttk.Spinbox(
-            self.attr_2,
-            from_=0,
-            to=90,
-            textvariable=self.pose_yaw
-        ).pack()
+        ttk.Label(self.attr_2, text='Yaw').pack()
+        self.filter_5 = ttk.Frame(self.attr_2)
+        self.filter_5.pack()
+        ttk.Entry(
+            self.filter_5,
+            textvariable=self.pose_yaw_lower
+        ).pack(pady=PADDING, side='left')
+        ttk.Entry(
+            self.filter_5,
+            textvariable=self.pose_yaw_upper
+        ).pack(pady=PADDING, side='left')
         ttk.Separator(self.attr_2, orient='horizontal').pack(**self.separator)
-        ttk.Label(self.attr_2, text='Pitch', padding=5).pack()
-        ttk.Spinbox(
-            self.attr_2,
-            from_=0,
-            to=90,
-            textvariable=self.pose_pitch
-        ).pack()
+
+        ttk.Label(self.attr_2, text='Pitch').pack()
+        self.filter_6 = ttk.Frame(self.attr_2)
+        self.filter_6.pack()
+        ttk.Entry(
+            self.filter_6,
+            textvariable=self.pose_pitch_lower
+        ).pack(pady=PADDING, side='left')
+        ttk.Entry(
+            self.filter_6,
+            textvariable=self.pose_pitch_upper
+        ).pack(pady=PADDING, side='left')
         ttk.Separator(self.attr_2, orient='horizontal').pack(**self.separator)
-        ttk.Label(self.attr_2, text='Roll', padding=5).pack()
-        ttk.Spinbox(
-            self.attr_2,
-            from_=0,
-            to=90,
-            textvariable=self.pose_roll
-        ).pack()
+
+        ttk.Label(self.attr_2, text='Roll').pack()
+        self.filter_7 = ttk.Frame(self.attr_2)
+        self.filter_7.pack()
+        ttk.Entry(
+            self.filter_7,
+            textvariable=self.pose_roll_lower
+        ).pack(pady=PADDING, side='left')
+        ttk.Entry(
+            self.filter_7,
+            textvariable=self.pose_roll_upper
+        ).pack(pady=PADDING, side='left')
 
         self.attr_3 = ttk.LabelFrame(
             self.menu,
             text='Image',
         )
         self.attr_3.pack(padx=PADDING, pady=PADDING)
-        ttk.Label(self.attr_3, text='IQA Score', padding=5).pack()
-        ttk.Spinbox(
-            self.attr_3,
-            from_=100,
-            to=0,
-            textvariable=self.image_quality_var
-        ).pack()
+        ttk.Label(self.attr_3, text='IQA Score').pack()
+        self.filter_8 = ttk.Frame(self.attr_3)
+        self.filter_8.pack()
+        ttk.Entry(
+            self.filter_8,
+            textvariable=self.image_quality_lower
+        ).pack(pady=PADDING, side='left')
+        ttk.Entry(
+            self.filter_8,
+            textvariable=self.image_quality_upper
+        ).pack(pady=PADDING, side='left')
 
         ttk.Button(
             self.menu,
