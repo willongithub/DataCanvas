@@ -22,7 +22,7 @@ import datacanvas.utils as util
 
 WIDTH = 1280
 HEIGHT = 800
-SIDEBAR = 100
+SIDEBAR = 300
 SHELL = 400
 PADDING = 5
 CANVAS = 500
@@ -785,15 +785,12 @@ class Task(tk.Toplevel):
         self.title('New Task')
         self.resizable(False, False)
 
-        # self.tk.call("source", "assets/theme/sun-valley.tcl")
-        # self.tk.call("set_theme", "light")
-
         # Calculates location of screen centre to put the gui window.
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         center_x = int(screen_width/2 - CANVAS/2)
         center_y = int(screen_height/2 - CANVAS/2)
-        self.geometry(f'{CANVAS}x{CANVAS}+{center_x}+{center_y}')
+        self.geometry(f'{SIDEBAR}x{CANVAS}+{center_x}+{center_y}')
 
         self.confidence = tk.DoubleVar(value=0.7)
         self.gender = tk.BooleanVar(value=True)
@@ -820,92 +817,68 @@ class Task(tk.Toplevel):
         ttk.Button(
             self.io,
             text='Select Image Folder',
+            style='Accent.TButton',
             command=self._select_folder
         ).pack(padx=PADDING, pady=PADDING)
 
-        self.flags = ttk.Frame(self)
-        self.flags.pack()
-        self.flag_1 = ttk.LabelFrame(
-            self.flags,
+        self.frame = ttk.Labelframe(
+            self,
             text='Face Detection'
         )
-        self.flag_1.pack(padx=PADDING, pady=PADDING, side='left')
+        self.frame.pack(
+            padx=PADDING, pady=PADDING,
+            ipadx=PADDING, ipady=PADDING, fill='x')
         ttk.Label(
-            self.flag_1,
+            self.frame,
             text='Confidence Level:',
-            padding=PADDING).pack()
+            padding=PADDING).pack(padx=PADDING, pady=PADDING)
         ttk.Spinbox(
-            self.flag_1,
+            self.frame,
             from_=0.0,
             to=1.0,
             textvariable=self.confidence
-        ).pack()
+        ).pack(padx=PADDING, pady=PADDING)
+        ttk.Separator(
+            self.frame, orient='horizontal').pack(fill='x', pady=PADDING)
+
         ttk.Label(
-            self.flag_1,
+            self.frame,
             text='Face Attributes:',
-            padding=PADDING).pack()
-        ttk.Label(
-            self.flag_1,
-            text='Age',
-            padding=PADDING).pack()
+            padding=PADDING).pack(padx=PADDING, pady=PADDING)
+        
+        self.attr_1 = ttk.Frame(self.frame)
+        self.attr_1.pack()
         ttk.Checkbutton(
-            self.flag_1,
-            onvalue=True,
-            offvalue=False,
+            self.attr_1,
+            text='Age',
             variable=self.age
         ).pack()
-        ttk.Label(
-            self.flag_1,
-            text='Gender',
-            padding=PADDING).pack()
         ttk.Checkbutton(
-            self.flag_1,
-            onvalue=True,
-            offvalue=False,
+            self.attr_1,
+            text='Gender',
             variable=self.gender
         ).pack()
-        ttk.Label(
-            self.flag_1,
-            text='Ethnicity',
-            padding=PADDING).pack()
         ttk.Checkbutton(
-            self.flag_1,
-            onvalue=True,
-            offvalue=False,
+            self.attr_1,
+            text='Ethnicity',
             variable=self.ethnicity
         ).pack()
-        ttk.Label(
-            self.flag_1,
-            text='Emotion',
-            padding=PADDING).pack()
         ttk.Checkbutton(
-            self.flag_1,
-            onvalue=True,
-            offvalue=False,
+            self.attr_1,
+            text='Emotion',
             variable=self.emotion
         ).pack()
 
-        self.flag_2 = ttk.LabelFrame(
-            self.flags,
-            text='Head Pose',
-        )
-        self.flag_2.pack(padx=PADDING, pady=PADDING, side='top')
+        self.attr_2 = ttk.Frame(self.frame)
+        self.attr_2.pack()
         ttk.Checkbutton(
-            self.flag_2,
-            onvalue=True,
-            offvalue=False,
+            self.attr_2,
+            text='Head Pose',
             variable=self.pose
         ).pack()
-
-        self.flag_3 = ttk.LabelFrame(
-            self.flags,
-            text='Image Quality',
-        )
-        self.flag_3.pack(padx=PADDING, pady=PADDING, side='top')
         ttk.Checkbutton(
-            self.flag_3,
-            onvalue=True,
-            offvalue=False,
+            self.attr_2,
+            text='Image Quality',
             variable=self.quality
         ).pack()
 
@@ -914,7 +887,7 @@ class Task(tk.Toplevel):
             text='Run',
             style='Accent.TButton',
             command=self._run
-        ).pack(padx=PADDING, pady=PADDING)
+        ).pack(padx=PADDING, pady=PADDING, side='bottom')
     
     def _return_listener(self, _):
         self._run()
