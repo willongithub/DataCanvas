@@ -5,7 +5,7 @@
 import json
 import os
 import tkinter as tk
-from platform import system
+# from platform import system
 from threading import Thread
 from tkinter import filedialog as fd
 from tkinter import ttk
@@ -18,7 +18,7 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
                                                NavigationToolbar2Tk)
 from PIL import Image, ImageOps, ImageTk
 
-import datacanvas.utils as util
+# import datacanvas.utils as util
 
 WIDTH = 1280
 HEIGHT = 800
@@ -41,11 +41,11 @@ class DataCanvas(tk.Tk):
         
         # machine = system()
         # if machine == 'Darwin':
-        #     icon = 'datacanvas/datacanvas.icns'
+        #     icon = 'assets/datacanvas.icns'
         # elif machine == 'Windows':
-        #     icon = 'datacanvas/datacanvas.ico'
+        #     icon = 'assets/datacanvas.ico'
         # else:
-        #     icon = 'datacanvas/datacanvas.xbm'
+        #     icon = 'assets/datacanvas.xbm'
         # self.iconbitmap(icon)
 
         # Set theme
