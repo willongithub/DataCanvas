@@ -29,6 +29,11 @@ CANVAS = 500
 
 TYPE = ('.jpg', '.jpeg','.png')
 
+def main():
+    """Entry point of the app."""
+
+    DataCanvas().mainloop()
+
 
 class DataCanvas(tk.Tk):
     """GUI window."""
@@ -41,15 +46,15 @@ class DataCanvas(tk.Tk):
         
         # machine = system()
         # if machine == 'Darwin':
-        #     icon = 'assets/datacanvas.icns'
+        #     icon = 'datacanvas/theme/datacanvas.icns'
         # elif machine == 'Windows':
-        #     icon = 'assets/datacanvas.ico'
+        #     icon = 'datacanvas/theme/datacanvas.ico'
         # else:
-        #     icon = 'assets/datacanvas.xbm'
+        #     icon = 'datacanvas/theme/datacanvas.xbm'
         # self.iconbitmap(icon)
 
         # Set theme
-        self.tk.call("source", "assets/theme/sun-valley.tcl")
+        self.tk.call("source", "datacanvas/theme/sun-valley.tcl")
         self.tk.call("set_theme", "light")
         # style = ttk.Style(self)
         # style.theme_use('clam')

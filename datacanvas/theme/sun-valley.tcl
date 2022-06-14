@@ -1,7 +1,7 @@
 # Copyright © 2021 rdbende <rdbende@gmail.com>
 
-source assets/theme/light.tcl
-source assets/theme/dark.tcl
+source datacanvas/theme/light.tcl
+source datacanvas/theme/dark.tcl
 
 option add *tearOff 0
 

@@ -1,12 +1,11 @@
 # !/usr/bin/env python3
 
-import datacanvas.gui as gui
+from datacanvas import app
 
-
-def main():
-    """Package entry point for the GUI."""
-
-    gui.DataCanvas().mainloop()
+# Entry point for `python -m datacanvas`.
 
 if __name__ == '__main__':
-    main()
+    """Package entry point for the GUI."""
+
+    app.main()
+    # app.DataCanvas().mainloop()
