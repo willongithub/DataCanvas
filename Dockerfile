@@ -9,7 +9,7 @@ COPY pyproject.toml /app
 RUN python3 -m pip install --upgrade pip setuptools
 RUN python3 -m pip install poetry
 RUN apt update
-RUN apt install python3-tk
+RUN apt install -y python3-tk
 # RUN curl -sSL https://install.python-poetry.org | python3 -
 # ENV PATH="$HOME/.local/bin:${PATH}"
 # RUN poetry config virtualenvs.create false
