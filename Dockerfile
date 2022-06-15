@@ -15,6 +15,6 @@ RUN apt install -y python3-tk
 # RUN poetry config virtualenvs.create false
 RUN poetry install
 
-COPY . .
+COPY . /app
 
-CMD [ "poetry", "run", "python", "-m", "datacanvas"]
+# CMD [ "poetry", "run", "python", "-m", "datacanvas"]
