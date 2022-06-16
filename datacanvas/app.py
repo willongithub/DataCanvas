@@ -5,6 +5,7 @@
 import json
 import os
 import tkinter as tk
+from shutil import copy2 as cp
 # from platform import system
 from threading import Thread
 from tkinter import filedialog as fd
@@ -255,6 +256,9 @@ class Sidebar(ttk.Frame):
         self.image_quality_lower = tk.IntVar(value=100)
         self.image_quality_upper = tk.IntVar(value=0)
 
+        self.iris_dist_lower = tk.IntVar(value=0)
+        self.iris_dist_upper = tk.IntVar(value=9999)
+
         self.separator = {'fill': 'x'}
         self.parent = widget
 
@@ -437,6 +441,18 @@ class Sidebar(ttk.Frame):
         ttk.Entry(
             self.filter_7,
             textvariable=self.pose_roll_upper
+        ).pack(pady=PADDING, side='left')
+
+        ttk.Label(self.attr_2, text='Interpupillary Distance').pack()
+        self.filter_9 = ttk.Frame(self.attr_2)
+        self.filter_9.pack()
+        ttk.Entry(
+            self.filter_9,
+            textvariable=self.iris_dist_lower
+        ).pack(pady=PADDING, side='left')
+        ttk.Entry(
+            self.filter_9,
+            textvariable=self.iris_dist_upper
         ).pack(pady=PADDING, side='left')
 
         self.attr_3 = ttk.LabelFrame(
@@ -996,10 +1012,23 @@ class Backend:
             "metadata": meta,
             "output": records
         }
-        path = os.path.join(self.results, "out.json")
+        path = os.path.join(self.results, "output.json")
         with open(path, "w") as f:
             f.write(json.dumps(file, indent=4))
-        msg = f"Result saved at {path}"
+        
+        answer = askokcancel(
+            title='New Dataset',
+            message='Create new dataset?',
+            icon=INFO
+        )
+        if answer:
+            dest = self.results
+            for image in self._raw:
+                source = image["file"]
+                cp(source, dest)
+
+        msg = f"Result saved at {self.results}"
+
         return msg
 
 
