@@ -1,0 +1,6 @@
+.git
+.cache
+.venv
+
+data/*
+out/*
