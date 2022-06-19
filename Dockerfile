@@ -22,9 +22,8 @@ COPY poetry.lock pyproject.toml /app/
 
 RUN poetry config virtualenvs.create false
 RUN poetry install
-RUN poetry shell
 
 COPY . /app
 
-# ENTRYPOINT [ "poetry", "run" ]
+# ENTRYPOINT [ "poetry", "shell" ]
 CMD [ "python", "-m", "datacanvas" ]
