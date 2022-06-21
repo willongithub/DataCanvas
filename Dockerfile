@@ -9,6 +9,7 @@ WORKDIR /app
 
 RUN apt update && \
     apt install -y git build-essential && \
+    # apt install -y python3-opencv-headless && \
     # apt install -y python3-opencv && \
     apt install -y python3-tk && \
     apt install -y curl
