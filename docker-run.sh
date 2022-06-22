@@ -1,32 +1,36 @@
-### For Linux Host
-# xhost +
+OS=$(uname)
 
-# docker run --rm \
-#     -e DISPLAY=$DISPLAY \
-#     -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-#     datacanvas-3.10
+if [ "$OS" = "Linux" ]; then
+## For Linux Host
+    xhost + local:docker
 
-# xhost -
+    docker run --rm \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        datacanvas-3.10
 
+    xhost - local:docker
 
-### For Darwin Host (bug not resolved)
-IP=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
-DISPLAY=$IP:0
+elif [ "$OS" = "Darwin" ]; then
+## For Darwin Host (bug not resolved)
+    IP=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
+    DISPLAY=$IP:0
 
-xhost + $IP
+    xhost + $IP
 
-docker run --rm \
-    -e DISPLAY=$DISPLAY \
-    -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-    datacanvas-3.10
+    docker run --rm \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        datacanvas-3.10
 
-xhost - $IP
+    xhost - $IP
 
+else
+## For Windows Host
+    DISPLAY=$(ipconfig | grep IPv4 | awk '{print $NF}' | awk 'FNR <= 1') 
 
-### For Windows Host
-# DISPLAY=$(ipconfig | grep IPv4 | awk '{print $NF}' | awk 'FNR <= 1') 
-
-# docker run --rm \
-#     -e DISPLAY=$DISPLAY:0 \
-#     -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-#     datacanvas-3.10
+    docker run --rm \
+        -e DISPLAY=$DISPLAY:0 \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        datacanvas-3.10
+fi
